@@ -79,7 +79,7 @@ end
 -- Parses all effects from the effect pool XML
 ---@return FX self The FX object for method chaining, or error handler result
 function FX:parse()
-	gma.cmd('Export Effect 1 Thru 9999 "effect_pool.xml"')
+	gma.cmd('Export Effect 1 Thru 9999 "effect_pool.xml" /o /nc')
 	
 	local file_path = PATH() .. "/effects/effect_pool.xml"
 	local file = io.open(file_path, "r")
@@ -96,100 +96,98 @@ function FX:parse()
 
 	for effect_tag in content:gmatch("<Effect.-</Effect>") do
 		local effect_index = effect_tag:match('index="(%d+)"')
-		if not effect_index then
-			debug("Warning: Effect tag without index found, skipping")
-			goto continue_effect
-		end
-		
-		local effect_data = {
-			index = tonumber(effect_index),
-			forms = {},
-			effectlines = {},
-			effectdata = {}
-		}
-
-		for form in effect_tag:gmatch("<Form.-</Form>") do
-			local form_data = {
-				index = tonumber(form:match('index="(%d+)"')),
-				name = form:match('name="([^"]+)"'),
-				display_2d = form:match('display_2d="([^"]+)"') == "true",
-				subforms = {}
+		if effect_index then
+			local effect_data = {
+				index = tonumber(effect_index),
+				forms = {},
+				effectlines = {},
+				effectdata = {}
 			}
 
-			for subform in form:gmatch("<SubForm.-</SubForm>") do
-				local subform_data = {
-					index = tonumber(subform:match('index="(%d+)"')),
-					display_spec_index = tonumber(subform:match('display_spec_index="(%d+)"')),
-					graph_color = subform:match('graph_color="([^"]+)"'),
-					points = {}
+			for form in effect_tag:gmatch("<Form.-</Form>") do
+				local form_data = {
+					index = tonumber(form:match('index="(%d+)"')),
+					name = form:match('name="([^"]+)"'),
+					display_2d = form:match('display_2d="([^"]+)"') == "true",
+					subforms = {}
 				}
 
-				for point in subform:gmatch("<SubFormPoint.-/>") do
-					local point_data = {
-						index = tonumber(point:match('index="(%d+)"')),
-						x = tonumber(point:match('x="([^"]+)"')),
-						y = tonumber(point:match('y="([^"]+)"')),
-						mode = point:match('mode="([^"]+)"')
+				for subform in form:gmatch("<SubForm.-</SubForm>") do
+					local subform_data = {
+						index = tonumber(subform:match('index="(%d+)"')),
+						display_spec_index = tonumber(subform:match('display_spec_index="(%d+)"')),
+						graph_color = subform:match('graph_color="([^"]+)"'),
+						points = {}
 					}
-					table.insert(subform_data.points, point_data)
+
+					for point in subform:gmatch("<SubFormPoint.-/>") do
+						local point_data = {
+							index = tonumber(point:match('index="(%d+)"')),
+							x = tonumber(point:match('x="([^"]+)"')),
+							y = tonumber(point:match('y="([^"]+)"')),
+							mode = point:match('mode="([^"]+)"')
+						}
+						table.insert(subform_data.points, point_data)
+					end
+
+					table.insert(form_data.subforms, subform_data)
 				end
 
-				table.insert(form_data.subforms, subform_data)
+				table.insert(effect_data.forms, form_data)
 			end
 
-			table.insert(effect_data.forms, form_data)
-		end
+			for effectline in effect_tag:gmatch("<Effectline.-</Effectline>") do
+				local effectline_data = {
+					index = tonumber(effectline:match('index="(%d+)"')),
+					attribute = effectline:match('attribute="([^"]+)"'),
+					blocks = tonumber(effectline:match('blocks="(%d+)"')),
+					groups = tonumber(effectline:match('groups="(%d+)"')),
+					wings = tonumber(effectline:match('wings="(%d+)"')),
+					rate = tonumber(effectline:match('rate="([^"]+)"')),
+					v1_a = tonumber(effectline:match('v1_a="([^"]+)"')),
+					v1_b = tonumber(effectline:match('v1_b="([^"]+)"')),
+					v2_a = tonumber(effectline:match('v2_a="([^"]+)"')),
+					v2_b = tonumber(effectline:match('v2_b="([^"]+)"')),
+					phase_a = tonumber(effectline:match('phase_a="([^"]+)"')),
+					phase_b = tonumber(effectline:match('phase_b="([^"]+)"')),
+					width_a = tonumber(effectline:match('width_a="([^"]+)"')),
+					width_b = tonumber(effectline:match('width_b="([^"]+)"')),
+					pwm_attack = tonumber(effectline:match('pwm_attack="([^"]+)"')),
+					pwm_decay = tonumber(effectline:match('pwm_decay="([^"]+)"')),
+					interleave = tonumber(effectline:match('interleave="(%d+)"')),
+					flags = {
+						absolute_mode = effectline:match('absolute_mode="([^"]+)"') == "true",
+						form_index = tonumber(effectline:match('form_index="(%d+)"')),
+						sub_form_index = tonumber(effectline:match('sub_form_index="(%d+)"')),
+						pwm_type = effectline:match('pwm_type="([^"]+)"'),
+						attack = tonumber(effectline:match('attack="(%d+)"')),
+						decay = tonumber(effectline:match('decay="(%d+)"')),
+						reverse = effectline:match('reverse="([^"]+)"') == "true",
+						bounce = effectline:match('bounce="([^"]+)"') == "true"
+					},
+					fixtures = {}
+				}
 
-		for effectline in effect_tag:gmatch("<Effectline.-</Effectline>") do
-			local effectline_data = {
-				index = tonumber(effectline:match('index="(%d+)"')),
-				attribute = effectline:match('attribute="([^"]+)"'),
-				blocks = tonumber(effectline:match('blocks="(%d+)"')),
-				groups = tonumber(effectline:match('groups="(%d+)"')),
-				wings = tonumber(effectline:match('wings="(%d+)"')),
-				rate = tonumber(effectline:match('rate="([^"]+)"')),
-				v1_a = tonumber(effectline:match('v1_a="([^"]+)"')),
-				v1_b = tonumber(effectline:match('v1_b="([^"]+)"')),
-				v2_a = tonumber(effectline:match('v2_a="([^"]+)"')),
-				v2_b = tonumber(effectline:match('v2_b="([^"]+)"')),
-				phase_a = tonumber(effectline:match('phase_a="([^"]+)"')),
-				phase_b = tonumber(effectline:match('phase_b="([^"]+)"')),
-				width_a = tonumber(effectline:match('width_a="([^"]+)"')),
-				width_b = tonumber(effectline:match('width_b="([^"]+)"')),
-				pwm_attack = tonumber(effectline:match('pwm_attack="([^"]+)"')),
-				pwm_decay = tonumber(effectline:match('pwm_decay="([^"]+)"')),
-				interleave = tonumber(effectline:match('interleave="([^"]+)"')),
-				flags = {
-					absolute_mode = effectline:match('absolute_mode="([^"]+)"') == "true",
-					form_index = tonumber(effectline:match('form_index="(%d+)"')),
-					sub_form_index = tonumber(effectline:match('sub_form_index="(%d+)"')),
-					pwm_type = effectline:match('pwm_type="([^"]+)"'),
-					attack = tonumber(effectline:match('attack="(%d+)"')),
-					decay = tonumber(effectline:match('decay="(%d+)"')),
-					reverse = effectline:match('reverse="([^"]+)"') == "true",
-					bounce = effectline:match('bounce="([^"]+)"') == "true"
-				},
-				fixtures = {}
-			}
+				for fixture in effectline:gmatch("<Fixture>([^<]+)</Fixture>") do
+					table.insert(effectline_data.fixtures, fixture)
+				end
 
-			for fixture in effectline:gmatch("<Fixture>([^<]+)</Fixture>") do
-				table.insert(effectline_data.fixtures, fixture)
+				table.insert(effect_data.effectlines, effectline_data)
 			end
 
-			table.insert(effect_data.effectlines, effectline_data)
-		end
+			for effectdata in effect_tag:gmatch("<EFFECTDATA.-/>") do
+				local effectdata_data = {
+					line = tonumber(effectdata:match('line="(%d+)"')),
+					fixture = effectdata:match('fixture="([^"]+)"'),
+					phase = tonumber(effectdata:match('phase="(%d+)"'))
+				}
+				table.insert(effect_data.effectdata, effectdata_data)
+			end
 
-		for effectdata in effect_tag:gmatch("<EFFECTDATA.-/>") do
-			local effectdata_data = {
-				line = tonumber(effectdata:match('line="(%d+)"')),
-				fixture = effectdata:match('fixture="([^"]+)"'),
-				phase = tonumber(effectdata:match('phase="(%d+)"'))
-			}
-			table.insert(effect_data.effectdata, effectdata_data)
+			table.insert(self.data.effects, effect_data)
+		else
+			debug("Warning: Effect tag without index found, skipping")
 		end
-
-		table.insert(self.data.effects, effect_data)
-		::continue_effect::
 	end
 
 	return self
@@ -885,7 +883,7 @@ function Group:parse(group_id)
 		return err_error_handler("Invalid group ID: " .. tostring(group_id))
 	end
 
-	local export_cmd = string.format('Export Group %d "Group %d"', group_id, group_id)
+	local export_cmd = string.format('Export Group %d "Group %d" /o /nc', group_id, group_id)
 	gma.cmd(export_cmd)
 	
 	local file_path = PATH() .. "/importexport/Group " .. group_id .. ".xml"
