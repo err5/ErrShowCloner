@@ -1,4 +1,8 @@
 local DEBUG_MODE = true
+
+-- Outputs debug messages to console and feedback
+--@param text The text to display
+--@return nil
 local function debug(text)
 	if text == nil then
 		text = "NIL"
@@ -11,27 +15,35 @@ local function debug(text)
 	end
 end
 
+-- Handles errors with user prompt to continue or terminate
+--@param err The error message
+--@return "CONTINUE" if user chooses to continue, or terminates execution
 local function err_error_handler(err)
 	local error_msg = tostring(err)
-    
+
 	local continue = gma.gui.confirm(
 		"Error",
 		error_msg .. "\n\nPress [OK] to continue\nPress [CANCEL] to terminate plugin"
 	)
-    
+
 	if continue then
 		debug("User chose to continue after error: " .. error_msg)
-		return "CONTINUE"
+		return
 	else
 		debug("User chose to terminate after error: " .. error_msg)
 		error("Plugin terminated by user")
 	end
 end
 
+-- Returns the current show path
+--@return string The full path to the show directory
 local PATH = function()
 	return gma.show.getvar('PATH')
 end
 
+-- Creates a deep copy of a table or value
+--@param orig The original value to copy
+--@return A deep copy of the original value
 local function deep_copy(orig)
 	local orig_type = type(orig)
 	local copy
@@ -43,16 +55,19 @@ local function deep_copy(orig)
 		end
 		setmetatable(copy, deep_copy(getmetatable(orig))) 
 	else
-		copy =
-			orig 
+		copy = orig
 	end
 
 	return copy
 end
 
+---@class FX
+---@field data table Contains effects data
 local FX = {}
 FX.__index = FX
 
+-- FX class constructor
+---@return FX A new FX object instance
 function FX.new()
 	local self = setmetatable({}, FX)
 	self.data = {
@@ -61,10 +76,10 @@ function FX.new()
 	return self
 end
 
+-- Parses all effects from the effect pool XML
+---@return FX self The FX object for method chaining, or error handler result
 function FX:parse()
 	gma.cmd('Export Effect 1 Thru 9999 "effect_pool.xml"')
-	
-	gma.sleep(0.3)
 	
 	local file_path = PATH() .. "/effects/effect_pool.xml"
 	local file = io.open(file_path, "r")
@@ -75,9 +90,19 @@ function FX:parse()
 	local content = file:read("*all")
 	file:close()
 
+	if not content or content == "" then
+		return err_error_handler("Effect pool file is empty or corrupted")
+	end
+
 	for effect_tag in content:gmatch("<Effect.-</Effect>") do
+		local effect_index = effect_tag:match('index="(%d+)"')
+		if not effect_index then
+			debug("Warning: Effect tag without index found, skipping")
+			goto continue_effect
+		end
+		
 		local effect_data = {
-			index = tonumber(effect_tag:match('index="(%d+)"')),
+			index = tonumber(effect_index),
 			forms = {},
 			effectlines = {},
 			effectdata = {}
@@ -140,7 +165,9 @@ function FX:parse()
 					sub_form_index = tonumber(effectline:match('sub_form_index="(%d+)"')),
 					pwm_type = effectline:match('pwm_type="([^"]+)"'),
 					attack = tonumber(effectline:match('attack="(%d+)"')),
-					decay = tonumber(effectline:match('decay="(%d+)"'))
+					decay = tonumber(effectline:match('decay="(%d+)"')),
+					reverse = effectline:match('reverse="([^"]+)"') == "true",
+					bounce = effectline:match('bounce="([^"]+)"') == "true"
 				},
 				fixtures = {}
 			}
@@ -162,11 +189,15 @@ function FX:parse()
 		end
 
 		table.insert(self.data.effects, effect_data)
+		::continue_effect::
 	end
 
 	return self
 end
 
+-- Creates a new effect with the given parameters
+--@param params Table of effect parameters including form, subform, points, and effectlines
+--@return FX self The FX object for method chaining, or error handler result
 function FX:create(params)
 	if not params then
 		return err_error_handler("No parameters provided for effect creation")
@@ -249,7 +280,12 @@ function FX:create(params)
 			flags = {
 				absolute_mode = effectline.absolute_mode or true,
 				form_index = effectline.form_index or 7,
-				sub_form_index = effectline.sub_form_index or 0
+				sub_form_index = effectline.sub_form_index or 0,
+				reverse = effectline.reverse or false,
+				bounce = effectline.bounce or false,
+				pwm_type = effectline.pwm_type or "",
+				attack = effectline.attack or 0,
+				decay = effectline.decay or 0
 			},
 			fixtures = effectline.fixtures
 		}
@@ -260,6 +296,11 @@ function FX:create(params)
 	return self
 end
 
+-- Writes data to a file
+--@param data The content to write
+--@param filepath The directory path
+--@param filename The file name
+--@return string The full path to the written file, or error handler result
 local function write_to_file(data, filepath, filename)
 	local full_path = filepath .. "/" .. filename
 	local file = io.open(full_path, "w")
@@ -284,8 +325,9 @@ local function write_to_file(data, filepath, filename)
 	return full_path
 end
 
-
-
+-- Gets a specific effect by index
+--@param index The effect index to retrieve
+--@return table|nil The effect data if found, nil otherwise
 function FX:get_effect(index)
 	for _, effect in ipairs(self.data.effects) do
 		if effect.index == index then
@@ -295,10 +337,15 @@ function FX:get_effect(index)
 	return nil
 end
 
+-- Gets all effects
+--@return table Array of all effect data
 function FX:get_all_effects()
 	return self.data.effects
 end
 
+-- Changes fixture IDs according to the provided mapping
+--@param mapping Table mapping source IDs to target IDs
+--@return FX self The FX object for method chaining, or error handler result
 function FX:change_fixture_ids(mapping)
 	if not mapping or type(mapping) ~= "table" then
 		return err_error_handler("Invalid fixture mapping provided")
@@ -308,10 +355,10 @@ function FX:change_fixture_ids(mapping)
 		for _, effectline in ipairs(effect.effectlines) do
 			local new_fixtures = {}
 			for _, fixture in ipairs(effectline.fixtures) do
-				local current_id = fixture:match("^(%d+)")
+				local current_id = fixture:match("^([%d%.]+)")
 				if current_id and mapping[current_id] then
 					for _, target_id in ipairs(mapping[current_id]) do
-						local new_fixture = fixture:gsub("^%d+", target_id)
+						local new_fixture = fixture:gsub("^[%d%.]+", target_id)
 						table.insert(new_fixtures, new_fixture)
 					end
 				else
@@ -325,19 +372,23 @@ function FX:change_fixture_ids(mapping)
 	return self
 end
 
+-- Writes an effect to file and imports it
+--@param effect_data The effect data to write
+--@param target_index The target index (result will be target_index + 1)
+--@return boolean true on success, or error handler result
 function FX:write_and_import_effect(effect_data, target_index)
-    if not effect_data or not target_index then
-        return err_error_handler("Invalid parameters for write_and_import_effect")
-    end
+	if not effect_data or not target_index then
+		return err_error_handler("Invalid parameters for write_and_import_effect")
+	end
 
-    if not effect_data.forms or not effect_data.effectlines then
-        return err_error_handler("Invalid effect data structure")
-    end
+	if not effect_data.forms or not effect_data.effectlines then
+		return err_error_handler("Invalid effect data structure")
+	end
 
-    local new_index = target_index + 1
-    debug("Writing effect to index " .. new_index)
+	local new_index = target_index + 1
+	debug("Writing effect to index " .. new_index)
 
-    local xml_content = [[
+	local xml_content = [[
 <?xml version="1.0" encoding="utf-8"?>
 <MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="9" stream_vers="60">
 	<Info datetime="]] .. os.date("%Y-%m-%dT%H:%M:%S") .. [[" showfile="atlas plugin testing" />
@@ -345,125 +396,152 @@ function FX:write_and_import_effect(effect_data, target_index)
 		<Forms>
 ]]
 
-    for _, form in ipairs(effect_data.forms) do
-        if not form.index or not form.name then
-            debug("Warning: Invalid form data, skipping")
-            goto continue_form
-        end
-
-        xml_content = xml_content .. string.format([[
+	for _, form in ipairs(effect_data.forms) do
+		if not form.index or not form.name then
+			debug("Warning: Invalid form data, skipping")
+		else
+			xml_content = xml_content .. string.format([[
 			<Form index="%d" name="%s" display_2d="%s">
 ]], form.index, form.name, tostring(form.display_2d):lower())
 
-        for _, subform in ipairs(form.subforms) do
-            if not subform.index then
-                debug("Warning: Invalid subform data, skipping")
-                goto continue_subform
-            end
-
-            xml_content = xml_content .. string.format([[
+			for _, subform in ipairs(form.subforms) do
+				if not subform.index then
+					debug("Warning: Invalid subform data, skipping")
+				else
+					xml_content = xml_content .. string.format([[
 				<SubForm index="%d" display_spec_index="%d" graph_color="%s">
 ]], subform.index, subform.display_spec_index or 0, subform.graph_color or "c0c0c0")
 
-            for _, point in ipairs(subform.points) do
-                if not point.index then
-                    debug("Warning: Invalid point data, skipping")
-                    goto continue_point
-                end
+					for _, point in ipairs(subform.points) do
+						if not point.index then
+							debug("Warning: Invalid point data, skipping")
+						else
+							local point_str = string.format([[
+						<SubFormPoint index="%d"]], point.index)
+							if point.x then point_str = point_str .. string.format(' x="%s"', point.x) end
+							if point.y then point_str = point_str .. string.format(' y="%s"', point.y) end
+							if point.mode then point_str = point_str .. string.format(' mode="%s"', point.mode) end
+							point_str = point_str .. " />\n"
+							xml_content = xml_content .. point_str
+						end
+					end
 
-                local point_str = string.format([[
-					<SubFormPoint index="%d"]], point.index)
-                if point.x then point_str = point_str .. string.format(' x="%s"', point.x) end
-                if point.y then point_str = point_str .. string.format(' y="%s"', point.y) end
-                if point.mode then point_str = point_str .. string.format(' mode="%s"', point.mode) end
-                point_str = point_str .. " />\n"
-                xml_content = xml_content .. point_str
-                ::continue_point::
-            end
-
-            xml_content = xml_content .. [[
+					xml_content = xml_content .. [[
 				</SubForm>
 ]]
-            ::continue_subform::
-        end
+				end
+			end
 
-        xml_content = xml_content .. [[
+			xml_content = xml_content .. [[
 			</Form>
 ]]
-        ::continue_form::
-    end
+		end
+	end
 
-    xml_content = xml_content .. [[
+	xml_content = xml_content .. [[
 		</Forms>
 ]]
 
-    for _, effectline in ipairs(effect_data.effectlines) do
-        if not effectline.index then
-            debug("Warning: Invalid effectline data, skipping")
-            goto continue_effectline
-        end
-
-        xml_content = xml_content .. string.format([[
+	for _, effectline in ipairs(effect_data.effectlines) do
+		if not effectline.index then
+			debug("Warning: Invalid effectline data, skipping")
+		else
+			xml_content = xml_content .. string.format([[
 		<Effectline index="%d" attribute="%s" blocks="%d" groups="%d" wings="%d" rate="%s" v1_a="%s" v1_b="%s" v2_a="%s" v2_b="%s" phase_a="%s" phase_b="%s" width_a="%s" width_b="%s" pwm_attack="%s" pwm_decay="%s" interleave="%s">
-			<flags absolute_mode="%s" form_index="%d" sub_form_index="%d" pwm_type="%s" attack="%d" decay="%d" />
+			<flags]], 
+				effectline.index, effectline.attribute or "DIM", effectline.blocks or 0, effectline.groups or 0,
+				effectline.wings or 0,
+				effectline.rate or 1, effectline.v1_a or 0, effectline.v1_b or 0, effectline.v2_a or 100,
+				effectline.v2_b or 100,
+				effectline.phase_a or 0, effectline.phase_b or -360, effectline.width_a or 100, effectline.width_b or 100,
+				effectline.pwm_attack or 0, effectline.pwm_decay or 0, effectline.interleave or 0)
+				
+			-- Add flags only if they are active
+			if effectline.flags then
+				-- Only include reverse flag if true
+				if effectline.flags.reverse then
+					xml_content = xml_content .. ' reverse="true"'
+				end
+				
+				-- Only include bounce flag if true
+				if effectline.flags.bounce then
+					xml_content = xml_content .. ' bounce="true"'
+				end
+				
+				-- Always include absolute_mode flag
+				xml_content = xml_content .. string.format(' absolute_mode="%s"', 
+					tostring(effectline.flags.absolute_mode or true):lower())
+				
+				-- Add remaining flags
+				xml_content = xml_content .. string.format(' form_index="%d" sub_form_index="%d"',
+					effectline.flags.form_index or 7,
+					effectline.flags.sub_form_index or 0)
+				
+				if effectline.flags.pwm_type and effectline.flags.pwm_type ~= "" then
+					xml_content = xml_content .. string.format(' pwm_type="%s"', effectline.flags.pwm_type)
+				end
+				
+				if effectline.flags.attack and effectline.flags.attack > 0 then
+					xml_content = xml_content .. string.format(' attack="%d"', effectline.flags.attack)
+				end
+				
+				if effectline.flags.decay and effectline.flags.decay > 0 then
+					xml_content = xml_content .. string.format(' decay="%d"', effectline.flags.decay)
+				end
+			else
+				-- Default flags if none provided
+				xml_content = xml_content .. ' absolute_mode="true" form_index="7" sub_form_index="0"'
+			end
+			
+			xml_content = xml_content .. [[ />
 			<Fixtures>
-]], 
-            effectline.index, effectline.attribute or "DIM", effectline.blocks or 0, effectline.groups or 0, effectline.wings or 0,
-            effectline.rate or 1, effectline.v1_a or 0, effectline.v1_b or 0, effectline.v2_a or 100, effectline.v2_b or 100,
-            effectline.phase_a or 0, effectline.phase_b or -360, effectline.width_a or 100, effectline.width_b or 100,
-            effectline.pwm_attack or 0, effectline.pwm_decay or 0, effectline.interleave or 0,
-            tostring(effectline.flags and effectline.flags.absolute_mode or true):lower(), 
-            effectline.flags and effectline.flags.form_index or 7, 
-            effectline.flags and effectline.flags.sub_form_index or 0,
-            effectline.flags and effectline.flags.pwm_type or "", 
-            effectline.flags and effectline.flags.attack or 0, 
-            effectline.flags and effectline.flags.decay or 0)
+]]
 
-        for _, fixture in ipairs(effectline.fixtures) do
-            xml_content = xml_content .. string.format([[
+			for _, fixture in ipairs(effectline.fixtures) do
+				xml_content = xml_content .. string.format([[
 				<Fixture>%s</Fixture>
 ]], fixture)
-        end
+			end
 
-        xml_content = xml_content .. [[
+			xml_content = xml_content .. [[
 			</Fixtures>
 		</Effectline>
 ]]
-        ::continue_effectline::
-    end
+		end
+	end
 
-    for _, effectdata in ipairs(effect_data.effectdata or {}) do
-        if not effectdata.line or not effectdata.fixture then
-            debug("Warning: Invalid effectdata, skipping")
-            goto continue_effectdata
-        end
-
-        xml_content = xml_content .. string.format([[
+	for _, effectdata in ipairs(effect_data.effectdata or {}) do
+		if not effectdata.line or not effectdata.fixture then
+			debug("Warning: Invalid effectdata, skipping")
+		else
+			xml_content = xml_content .. string.format([[
 		<EFFECTDATA line="%d" fixture="%s" phase="%d" />
 ]], effectdata.line, effectdata.fixture, effectdata.phase or 0)
-        ::continue_effectdata::
-    end
+		end
+	end
 
-    xml_content = xml_content .. [[
+	xml_content = xml_content .. [[
 	</Effect>
 </MA>]]
 
-    local filename = string.format("effect_%d.xml", new_index)
-    local filepath = PATH() .. '/effects/'
-    local full_path = write_to_file(xml_content, filepath, filename)
-    
-    if not full_path then
-        return err_error_handler("Failed to write effect file")
-    end
+	local filename = string.format("effect_%d.xml", new_index)
+	local filepath = PATH() .. '/effects/'
+	local full_path = write_to_file(xml_content, filepath, filename)
 
-    local import_cmd = string.format('Import "%s" at Effect %d /o /nc', filename, new_index)
-    gma.cmd(import_cmd)
-    
-    gma.sleep(0.05)
-    
-    return true
+	if not full_path then
+		return err_error_handler("Failed to write effect file")
+	end
+
+	local import_cmd = string.format('Import "%s" at Effect %d /o /nc', filename, new_index)
+	gma.cmd(import_cmd)
+
+	return true
 end
 
+-- Creates a fixture mapping between two groups
+--@param group_a Source group fixtures
+--@param group_b Target group fixtures
+--@return table Mapping from group_a fixture IDs to group_b fixture IDs, or error handler result
 local function create_fixture_mapping(group_a, group_b)
 	if not group_a or not group_b or type(group_a) ~= "table" or type(group_b) ~= "table" then
 		return err_error_handler("Invalid fixture groups provided")
@@ -476,51 +554,212 @@ local function create_fixture_mapping(group_a, group_b)
 	local mapping = {}
 	local group_a_size = #group_a
 	local group_b_size = #group_b
+	
+	debug("Creating fixture mapping. Group A: " .. group_a_size .. " fixtures, Group B: " .. group_b_size .. " fixtures")
     
-    -- Create direct fixture pairs based on relative positions
-    for i, fixture_a in ipairs(group_a) do
-        local id_a = fixture_a:match("^(%d+)")
-        if not id_a then
-            return err_error_handler("Invalid fixture ID format in group A")
-        end
-        
-        -- Calculate corresponding fixtures in group B
-        local mapped_fixtures = {}
-        local ratio = group_b_size / group_a_size
-        local start_idx = math.floor((i - 1) * ratio) + 1
-        local end_idx = math.floor(i * ratio)
-        
-        -- Ensure we have at least one fixture
-        if start_idx > end_idx then
-            start_idx = end_idx
-        end
-        
-        -- Add all corresponding fixtures
-        for j = start_idx, end_idx do
-            if j <= group_b_size then
-                local id_b = group_b[j]:match("^(%d+)")
-                if not id_b then
-                    return err_error_handler("Invalid fixture ID format in group B")
+    -- Check if groups are potentially symmetrical (same size or simple multiples)
+    local is_symmetrical = false
+    if group_a_size == group_b_size then
+        is_symmetrical = true
+        debug("Groups are symmetrical (same size)")
+    elseif group_a_size > group_b_size and group_a_size % group_b_size == 0 then
+        is_symmetrical = true
+        debug("Groups are symmetrical (Group A is a multiple of Group B)")
+    elseif group_b_size > group_a_size and group_b_size % group_a_size == 0 then
+        is_symmetrical = true
+        debug("Groups are symmetrical (Group B is a multiple of Group A)")
+    end
+    
+    -- Use direct index mapping for symmetrical groups
+    if is_symmetrical then
+        debug("Using direct positional mapping for symmetrical groups")
+        if group_a_size == group_b_size then
+            -- Equal sizes - simple 1:1 mapping by position
+            for i = 1, group_a_size do
+                local fixture_a = group_a[i]
+                local id_a = fixture_a:match("^([%d%.]+)")
+                if not id_a then
+                    debug("Warning: Invalid fixture ID format in group A at index " .. i)
+                else
+                    local id_b = group_b[i]:match("^([%d%.]+)")
+                    if id_b then
+                        mapping[id_a] = {id_b}
+                        debug("Mapped Group A fixture " .. id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. i .. ")")
+                    else
+                        debug("Warning: Invalid fixture ID format in group B at index " .. i)
+                    end
                 end
-                table.insert(mapped_fixtures, id_b)
+            end
+        elseif group_a_size > group_b_size then
+            -- Group A larger - map multiple A to single B
+            local ratio = group_a_size / group_b_size
+            for i = 1, group_a_size do
+                local fixture_a = group_a[i]
+                local id_a = fixture_a:match("^([%d%.]+)")
+                if not id_a then
+                    debug("Warning: Invalid fixture ID format in group A at index " .. i)
+                else
+                    local b_index = math.floor((i - 1) / ratio) + 1
+                    local id_b = group_b[b_index]:match("^([%d%.]+)")
+                    if id_b then
+                        mapping[id_a] = {id_b}
+                        debug("Mapped Group A fixture " .. id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
+                    else
+                        debug("Warning: Invalid fixture ID format in group B at index " .. b_index)
+                    end
+                end
+            end
+        else -- group_b_size > group_a_size
+            -- Group B larger - map single A to multiple B
+            local ratio = group_b_size / group_a_size
+            for i = 1, group_a_size do
+                local fixture_a = group_a[i]
+                local id_a = fixture_a:match("^([%d%.]+)")
+                if not id_a then
+                    debug("Warning: Invalid fixture ID format in group A at index " .. i)
+                else
+                    local mapped_fixtures = {}
+                    local base_idx = (i - 1) * ratio + 1
+                    -- Map each A fixture to exactly 'ratio' consecutive B fixtures
+                    for j = 0, ratio - 1 do
+                        local b_idx = math.floor(base_idx + j)
+                        if b_idx <= group_b_size then
+                            local id_b = group_b[b_idx]:match("^([%d%.]+)")
+                            if id_b then
+                                table.insert(mapped_fixtures, id_b)
+                                debug("  - Added Group B fixture " .. id_b .. " (at " .. b_idx .. ")")
+                            end
+                        end
+                    end
+                    mapping[id_a] = mapped_fixtures
+                    debug("Mapped Group A fixture " .. id_a .. " to " .. #mapped_fixtures .. " Group B fixtures")
+                end
             end
         end
-        
-        -- Always ensure at least one fixture is mapped
-        if #mapped_fixtures == 0 and group_b_size > 0 then
-            local id_b = group_b[1]:match("^(%d+)")
-            table.insert(mapped_fixtures, id_b)
+    else
+        -- For non-symmetrical groups, use mirror-symmetrical distribution
+        debug("Using mirror-symmetrical mapping for non-symmetrical groups")
+        if group_a_size >= group_b_size then
+            debug("Group A is larger, creating symmetrical distribution")
+            
+            -- For each position in Group A, calculate its mirror pair
+            for i = 1, group_a_size do
+                local fixture_a = group_a[i]
+                local id_a = fixture_a:match("^([%d%.]+)")
+                if not id_a then
+                    debug("Warning: Invalid fixture ID format in group A at index " .. i)
+                else
+                    -- Calculate symmetrical position in Group B
+                    -- Map from both ends toward middle to maintain symmetry
+                    local normalized_pos = (i - 0.5) / group_a_size  -- 0.0 to 1.0 position
+                    local b_index = math.floor(normalized_pos * group_b_size) + 1
+                    if b_index > group_b_size then b_index = group_b_size end
+                    
+                    local mapped_fixtures = {}
+                    local id_b = group_b[b_index]:match("^([%d%.]+)")
+                    if id_b then
+                        table.insert(mapped_fixtures, id_b)
+                        debug("Mapped Group A fixture " .. id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
+                    else
+                        debug("Warning: Invalid fixture ID format in group B at index " .. b_index)
+                    end
+                    
+                    mapping[id_a] = mapped_fixtures
+                end
+            end
+        else
+            debug("Group B is larger, creating symmetrical distribution")
+            
+            -- First, calculate how many targets each source gets
+            local base_targets = math.floor(group_b_size / group_a_size)
+            local extra_targets = group_b_size % group_a_size
+            
+            -- Calculate how many targets each position will get
+            local targets_per_position = {}
+            for i = 1, group_a_size do
+                -- Start with base targets for all positions
+                targets_per_position[i] = base_targets
+            end
+            
+            -- Distribute extra targets symmetrically from outside in
+            local left = 1
+            local right = group_a_size
+            while extra_targets > 0 and left <= right do
+                if left == right and extra_targets == 1 then
+                    -- If we have one extra target and we're at the middle position
+                    targets_per_position[left] = targets_per_position[left] + 1
+                    extra_targets = 0
+                elseif left < right and extra_targets >= 2 then
+                    -- Add one target to each symmetrical position
+                    targets_per_position[left] = targets_per_position[left] + 1
+                    targets_per_position[right] = targets_per_position[right] + 1
+                    extra_targets = extra_targets - 2
+                elseif extra_targets == 1 then
+                    -- If we have one extra left, add it to the middle-ish position
+                    local middle = math.ceil(group_a_size / 2)
+                    targets_per_position[middle] = targets_per_position[middle] + 1
+                    extra_targets = 0
+                else
+                    break
+                end
+                left = left + 1
+                right = right - 1
+            end
+            
+            debug("Target distribution: " .. table.concat(targets_per_position, ", "))
+            
+            -- Now calculate starting indices for each position
+            local start_indices = {}
+            local current_index = 1
+            for i = 1, group_a_size do
+                start_indices[i] = current_index
+                current_index = current_index + targets_per_position[i]
+            end
+            
+            -- Map fixtures using the calculated distribution
+            for i = 1, group_a_size do
+                local fixture_a = group_a[i]
+                local id_a = fixture_a:match("^([%d%.]+)")
+                if not id_a then
+                    debug("Warning: Invalid fixture ID format in group A at index " .. i)
+                else
+                    local mapped_fixtures = {}
+                    local targets_count = targets_per_position[i]
+                    local start_idx = start_indices[i]
+                    
+                    debug("Fixture " .. id_a .. " (at " .. i .. ") maps to " .. targets_count .. 
+                          " fixtures starting at " .. start_idx)
+                    
+                    for j = 0, targets_count - 1 do
+                        local target_idx = start_idx + j
+                        if target_idx <= group_b_size then
+                            local id_b = group_b[target_idx]:match("^([%d%.]+)")
+                            if id_b then
+                                table.insert(mapped_fixtures, id_b)
+                                debug("  - Added Group B fixture " .. id_b .. " (at " .. target_idx .. ")")
+                            else
+                                debug("Warning: Invalid fixture ID format in group B at index " .. target_idx)
+                            end
+                        end
+                    end
+                    
+                    mapping[id_a] = mapped_fixtures
+                    debug("Mapped Group A fixture " .. id_a .. " to " .. #mapped_fixtures .. " Group B fixtures")
+                end
+            end
         end
-        
-        mapping[id_a] = mapped_fixtures
     end
 
 	return mapping
 end
 
+---@class Group
+---@field data table Contains group data including id, name, and fixtures
 local Group = {}
 Group.__index = Group
 
+-- Group class constructor
+---@return Group A new Group object instance
 function Group.new()
 	local self = setmetatable({}, Group)
 	self.data = {
@@ -531,11 +770,123 @@ function Group.new()
 	return self
 end
 
+-- Executes clone commands based on fixture mapping
+---@param fixture_mapping table The mapping of source to target fixtures
+---@return boolean|any True on success, or error handler result
+function Group:values_clone(fixture_mapping)
+	if not fixture_mapping or type(fixture_mapping) ~= "table" then
+		return err_error_handler("Invalid fixture mapping provided to values_clone")
+	end
+
+	local any_fixtures_cloned = false
+
+	-- Get ordered list of source fixtures to maintain symmetry
+	local source_fixtures = {}
+	for src_id, _ in pairs(fixture_mapping) do
+		table.insert(source_fixtures, src_id)
+	end
+	table.sort(source_fixtures)
+
+	debug("Processing " .. #source_fixtures .. " source fixtures symmetrically")
+
+	-- Process fixtures symmetrically from both ends toward middle
+	local left = 1
+	local right = #source_fixtures
+	while left <= right do
+		local src_id = source_fixtures[left]
+		local target_ids = fixture_mapping[src_id]
+
+		if #target_ids > 0 then
+			debug("Cloning source fixture " .. src_id .. " to " .. #target_ids .. " targets")
+
+			for _, target_id in ipairs(target_ids) do
+				any_fixtures_cloned = true
+				debug("Cloning source " .. src_id .. " to target " .. target_id)
+
+				-- WORLDS
+				local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if World *", src_id, target_id)
+				debug("Executing: " .. clone_cmd)
+				gma.cmd(clone_cmd)
+
+				-- PRESETS
+				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset *.*", src_id, target_id)
+				debug("Executing: " .. clone_cmd)
+				gma.cmd(clone_cmd)
+
+				-- EFFECTS
+				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Effect *", src_id, target_id)
+				debug("Executing: " .. clone_cmd)
+				gma.cmd(clone_cmd)
+
+				-- SEQUENCES
+				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Sequ *", src_id, target_id)
+				debug("Executing: " .. clone_cmd)
+				gma.cmd(clone_cmd)
+			end
+		end
+
+		-- Process matching fixture from right side if different (i.e., not the middle fixture in odd-sized groups)
+		if left < right then
+			src_id = source_fixtures[right]
+			target_ids = fixture_mapping[src_id]
+
+			if #target_ids > 0 then
+				debug("Cloning source fixture " .. src_id .. " to " .. #target_ids .. " targets")
+
+				for _, target_id in ipairs(target_ids) do
+					any_fixtures_cloned = true
+					debug("Cloning source " .. src_id .. " to target " .. target_id)
+
+					-- WORLDS
+					local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if World *", src_id, target_id)
+					debug("Executing: " .. clone_cmd)
+					gma.cmd(clone_cmd)
+
+					-- PRESETS
+					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset *.*", src_id, target_id)
+					debug("Executing: " .. clone_cmd)
+					gma.cmd(clone_cmd)
+
+					-- EFFECTS
+					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Effect *", src_id, target_id)
+					debug("Executing: " .. clone_cmd)
+					gma.cmd(clone_cmd)
+
+					-- SEQUENCES
+					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Sequ *", src_id, target_id)
+					debug("Executing: " .. clone_cmd)
+					gma.cmd(clone_cmd)
+				end
+			end
+		else 
+			-- We've reached the middle fixture in an odd-sized group (left == right)
+			-- Add debug message to indicate we're at the middle fixture
+			if left == right then
+				debug("Processing middle fixture " .. source_fixtures[left] .. " (only once)")
+			end
+		end
+
+		left = left + 1
+		right = right - 1
+	end
+
+	if not any_fixtures_cloned then
+		return err_error_handler("No fixtures were mapped for cloning")
+	end
+
+	return true
+end
+
+-- Parses a group from its XML file
+---@param group_id number The group ID to parse
+---@return Group self The Group object for method chaining, or error handler result
 function Group:parse(group_id)
+	if not group_id or type(group_id) ~= "number" or group_id <= 0 then
+		return err_error_handler("Invalid group ID: " .. tostring(group_id))
+	end
+
 	local export_cmd = string.format('Export Group %d "Group %d"', group_id, group_id)
 	gma.cmd(export_cmd)
-	
-	gma.sleep(0.05)
 	
 	local file_path = PATH() .. "/importexport/Group " .. group_id .. ".xml"
 	local file = io.open(file_path, "r")
@@ -546,6 +897,10 @@ function Group:parse(group_id)
 	local content = file:read("*all")
 	file:close()
 
+	if not content or content == "" then
+		return err_error_handler("Group XML file is empty or corrupted")
+	end
+
 	local group_tag = content:match("<Group.-</Group>")
 	if not group_tag then
 		return err_error_handler("No group found in XML file")
@@ -553,127 +908,289 @@ function Group:parse(group_id)
 
 	self.data.id = tonumber(group_tag:match('index="(%d+)"'))
 	self.data.name = group_tag:match('name="([^"]+)"')
+	
+	if not self.data.id then
+		return err_error_handler("Could not parse group ID from XML")
+	end
 
 	for fixture in group_tag:gmatch('<Subfixture fix_id="([^"]+)"') do
 		table.insert(self.data.fixtures, fixture)
 	end
 
+	if #self.data.fixtures == 0 then
+		debug("Warning: Group " .. group_id .. " contains no fixtures")
+	end
+
 	return self
 end
 
+-- Gets all group data
+---@return table The group data (id, name, fixtures)
 function Group:get_data()
 	return self.data
 end
 
+-- Gets the fixtures in the group
+---@return table Array of fixture IDs
 function Group:get_fixtures()
 	return self.data.fixtures
 end
 
+-- Gets the group ID
+--@return number The group ID
 function Group:get_id()
 	return self.data.id
 end
 
+-- Gets the group name
+--@return string The group name
 function Group:get_name()
 	return self.data.name
 end
 
+-- Clones an effect with new fixture data
+--@param source_index The index of the effect to clone
+--@param target_effect The modified effect data to write
+--@return boolean true on success, or error handler result
 local function clone_effects(source_index, target_effect)
-    if not source_index or not target_effect then
-        return err_error_handler("Invalid parameters for clone_effects")
-    end
-    debug("Cloning effect " .. source_index)
-    local fx = FX.new()
-    fx:write_and_import_effect(target_effect, source_index)
-    debug("Effect " .. source_index .. " cloned successfully")
+	if not source_index or not target_effect then
+		return err_error_handler("Invalid parameters for clone_effects")
+	end
+	
+	if not target_effect.forms or not target_effect.effectlines then
+		return err_error_handler("Invalid target effect data structure")
+	end
+	
+	debug("Cloning effect " .. source_index)
+	local fx = FX.new()
+	local result = fx:write_and_import_effect(target_effect, source_index)
+	
+	if result ~= true then
+		return result  -- This will be the error handler result
+	end
+	
+	debug("Effect " .. source_index .. " cloned successfully")
+	return true
 end
 
+-- Main function for cloning effects with fixture mapping
+--@return nil on normal completion, or error handler result
 function CLONE()
-    local group_a_id = tonumber(gma.textinput("Enter Group A ID", ""))
-    local group_b_id = tonumber(gma.textinput("Enter Group B ID", ""))
-    
-    if not group_a_id or not group_b_id then
-        return err_error_handler("Invalid group IDs provided")
-    end
+	if not gma.gui.confirm('WARNING', 'Please create a backup of your show before running clonning. Press Confirm to proceed.') then
+		debug("User cancelled backup warning confirmation")
+		return
+	end
 
-    -- Parse groups and create mapping
-    local group_a = Group.new():parse(group_a_id)
-    local group_b = Group.new():parse(group_b_id)
-    local mapping = create_fixture_mapping(group_a:get_fixtures(), group_b:get_fixtures())
-    
-    -- Define non-group fixtures
-    local non_group_fixtures = {34,35,38,39,42,43,46,47}
-    local non_group_set = {}
-    for _, id in ipairs(non_group_fixtures) do
-        non_group_set[tostring(id)] = true
-    end
-    
-    -- Parse effects and modify them
-    local fx_pool = FX.new():parse()
-    local modified_count = 0
-    
-    for _, effect in ipairs(fx_pool:get_all_effects()) do
-        if not effect.index then goto continue end
-        
-        -- Check if effect uses Group A fixtures
-        local uses_group_a = false
-        for _, line in ipairs(effect.effectlines) do
-            for _, fixture in ipairs(line.fixtures) do
-                local id = fixture:match("^(%d+)")
-                if id and mapping[id] then
-                    uses_group_a = true
-                    break
-                end
-            end
-            if uses_group_a then break end
-        end
-        
-        if not uses_group_a then goto continue end
-        
-        -- Clone the effect
-        local modified = deep_copy(effect)
-        
-        -- Process each effect line
-        for _, line in ipairs(modified.effectlines) do
-            -- Directly replace each Group A fixture with its Group B pairs
-            local new_fixtures = {}
-            local idx = 1
-            
-            for i, fixture in ipairs(line.fixtures) do
-                local id = fixture:match("^(%d+)")
-                
-                if id and non_group_set[id] then
-                    -- Keep non-group fixtures as is
-                    new_fixtures[idx] = fixture
-                    idx = idx + 1
-                elseif id and mapping[id] then
-                    -- Replace with all mapped fixtures
-                    for _, target_id in ipairs(mapping[id]) do
-                        local new_fixture = fixture:gsub("^%d+", target_id)
-                        new_fixtures[idx] = new_fixture
-                        idx = idx + 1
-                    end
-                else
-                    -- Keep other fixtures as is
-                    new_fixtures[idx] = fixture
-                    idx = idx + 1
-                end
-            end
-            
-            line.fixtures = new_fixtures
-        end
-        
-        if clone_effects(effect.index, modified) then
-            modified_count = modified_count + 1
-        end
-        
-        ::continue::
-    end
-    
-    debug("CLONE completed: " .. modified_count .. " effects modified")
+	local group_a_id = tonumber(gma.textinput("Enter Group A ID", ""))
+	local group_b_id = tonumber(gma.textinput("Enter Group B ID", ""))
+	
+	if not group_a_id or not group_b_id then
+		return err_error_handler("Invalid group IDs provided")
+	end
+	
+	if group_a_id == group_b_id then
+		return err_error_handler("Group A and Group B cannot be the same")
+	end
+	
+	-- Ask if user wants to preserve original effectlines
+	local preserve_original = gma.gui.confirm('Duplicate Effectlines', 'Do you want to keep the original effect lines alongside the new ones?')
+	if preserve_original then
+		debug("User chose to duplicate effectlines and preserve originals")
+	else
+		debug("User chose to replace original effectlines")
+	end
+	
+	local group_a = Group.new():parse(group_a_id)
+	if type(group_a) == "string" then
+		return err_error_handler("Failed to parse Group A: " .. group_a)
+	end
+	
+	local group_b = Group.new():parse(group_b_id)
+	if type(group_b) == "string" then
+		return err_error_handler("Failed to parse Group B: " .. group_b)
+	end
+	
+	local group_a_fixtures = group_a:get_fixtures()
+	local group_b_fixtures = group_b:get_fixtures()
+	
+	if #group_a_fixtures == 0 then
+		return err_error_handler("Group A contains no fixtures")
+	end
+	
+	if #group_b_fixtures == 0 then
+		return err_error_handler("Group B contains no fixtures")
+	end
+	
+	local mapping = create_fixture_mapping(group_a_fixtures, group_b_fixtures)
+	if not mapping then
+		return err_error_handler("Failed to create fixture mapping")
+	end
+	
+	local fx_pool = FX.new():parse()
+	if type(fx_pool) == "string" then
+		return err_error_handler("Failed to parse effects: " .. fx_pool)
+	end
+
+	-- Create a set of Group A fixture IDs for quick lookup
+	local group_a_set = {}
+	for _, fixture in ipairs(group_a_fixtures) do
+		local id = fixture:match("^([%d%.]+)")
+		if id then
+			group_a_set[id] = true
+		end
+	end
+	
+	-- Get all effects from the pool
+	local effects = fx_pool:get_all_effects()
+	if not effects or #effects == 0 then
+		return err_error_handler("No effects found in the effect pool")
+	end
+	
+	debug("Found " .. #effects .. " effects in the pool")
+
+	-- Clone fixture values from Group A to Group B
+	debug("Cloning fixture values from Group A to Group B")
+	local values_clone_result = group_a:values_clone(mapping)
+	if values_clone_result ~= true then
+		return values_clone_result 
+	end
+	
+	local effects_modified = 0
+	
+	-- Loop through each effect to find those using Group A fixtures
+	for i = 1, #effects do
+		local effect = effects[i]
+		if not effect or not effect.index then
+			debug("Warning: Invalid effect data, skipping")
+		else
+			local uses_group_a = false
+			local effect_index = effect.index
+			
+			-- Create a deep copy of the effect for modification
+			local target_effect = deep_copy(effect)
+			local modified = false
+			
+			-- Temporary storage for effectlines if we need to preserve originals
+			local original_effectlines = {}
+			if preserve_original then
+				-- Store the original effectlines before making any changes
+				original_effectlines = deep_copy(target_effect.effectlines or {})
+			end
+			
+			-- Check each effectline for Group A fixtures
+			for j = 1, #(target_effect.effectlines or {}) do
+				local effectline = target_effect.effectlines[j]
+				if not effectline or not effectline.fixtures then
+					debug("Warning: Invalid effectline in effect " .. effect_index .. ", skipping")
+				else
+					local original_fixtures = effectline.fixtures
+					local new_fixtures = {}
+					local line_modified = false
+					
+					-- We only need to track used fixtures when Group A > Group B to prevent duplicates
+					local used_target_fixtures = {}
+					local should_track_used = #group_a_fixtures >= #group_b_fixtures
+					
+					debug("Processing effect " .. effect_index .. " with " .. #original_fixtures .. " fixtures")
+					
+					-- Process each fixture in the effectline
+					for k = 1, #original_fixtures do
+						local fixture = original_fixtures[k]
+						if not fixture then
+							debug("Warning: Invalid fixture in effectline, skipping")
+						else
+							local current_id = fixture:match("^([%d%.]+)")
+							
+							if current_id and group_a_set[current_id] then
+								-- This fixture is in Group A, map it to Group B
+								uses_group_a = true
+								line_modified = true
+								
+								if mapping[current_id] and #mapping[current_id] > 0 then
+									debug("Processing fixture " .. current_id .. " with " .. #mapping[current_id] .. " mapped fixtures")
+									
+									for idx, target_id in ipairs(mapping[current_id]) do
+										-- Only check for used fixtures when Group A > Group B
+										if target_id and (not should_track_used or not used_target_fixtures[target_id]) then
+											local new_fixture = fixture:gsub("^[%d%.]+", target_id)
+											table.insert(new_fixtures, new_fixture)
+											debug("Added mapped fixture " .. target_id .. " to effect (map index " .. idx .. ")")
+											
+											if should_track_used then
+												used_target_fixtures[target_id] = true  -- Mark this target fixture as used
+											end
+										end
+									end
+								else
+									debug("Warning: No mapping found for fixture " .. current_id)
+								end
+							else
+								-- Keep non-Group A fixtures as they are
+								table.insert(new_fixtures, fixture)
+								debug("Kept non-Group A fixture " .. (current_id or "unknown"))
+							end
+						end
+					end
+					
+					if line_modified then
+						effectline.fixtures = new_fixtures
+						modified = true
+						debug("Modified effectline now has " .. #new_fixtures .. " fixtures")
+					end
+				end
+			end
+			
+			-- If we want to preserve originals and the effect was modified,
+			-- append the original effectlines to the modified effect
+			if preserve_original and modified then
+				debug("Preserving original effectlines by duplicating them")
+				-- Find the highest index in current effectlines
+				local highest_index = 0
+				for _, effectline in ipairs(target_effect.effectlines) do
+					if effectline.index > highest_index then
+						highest_index = effectline.index
+					end
+				end
+				
+				-- Clone the original effectlines with new indices
+				for _, original_line in ipairs(original_effectlines) do
+					if original_line and original_line.fixtures and #original_line.fixtures > 0 then
+						highest_index = highest_index + 1
+						local cloned_line = deep_copy(original_line)
+						cloned_line.index = highest_index
+						
+						-- We might want to mark the cloned lines in some way
+						-- For example, add "ORIGINAL" to attribute name if possible
+						if cloned_line.attribute then
+							cloned_line.attribute = cloned_line.attribute .. " (Original)"
+						end
+						
+						debug("Adding preserved original effectline with new index " .. highest_index)
+						table.insert(target_effect.effectlines, cloned_line)
+					end
+				end
+			end
+			
+			if uses_group_a and modified then
+				debug("Cloning effect " .. effect_index .. " (uses Group A fixtures)")
+				local success = clone_effects(effect_index, target_effect)
+				if not success then 
+					return err_error_handler("Failed to clone effect " .. effect_index)
+				end
+				effects_modified = effects_modified + 1
+			end
+		end
+	end
+
+	if effects_modified == 0 then
+		gma.gui.msgbox("No effects modified", "No effects using Group A fixtures were found. Fixture values were cloned.")
+	else
+		gma.gui.msgbox("Clonning complete", 'Successfully modified ' .. effects_modified .. ' effects. Please verify updated effects and values')
+	end
+	
+	debug("CLONE function completed successfully")
 end
 
-
-
-
-
+-- Returns the main CLONE function for plugin execution
+--@return function The CLONE function
 return CLONE
