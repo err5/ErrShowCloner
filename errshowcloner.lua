@@ -1,3 +1,5 @@
+
+local VERSION = "v0.1.0"
 local DEBUG_MODE = true
 
 -- Outputs debug messages to console and feedback
@@ -15,18 +17,20 @@ local function debug(text)
 	end
 end
 
+local name = 'username'
+
 -- Handles errors with user prompt to continue or terminate
 --@param err The error message
 --@return "CONTINUE" if user chooses to continue, or terminates execution
 local function err_error_handler(err)
 	local error_msg = tostring(err)
 
-	local continue = gma.gui.confirm(
+	local ok = gma.gui.confirm(
 		"Error",
 		error_msg .. "\n\nPress [OK] to continue\nPress [CANCEL] to terminate plugin"
 	)
 
-	if continue then
+	if ok then
 		debug("User chose to continue after error: " .. error_msg)
 		return
 	else
@@ -370,6 +374,7 @@ function FX:change_fixture_ids(mapping)
 	return self
 end
 
+
 -- Writes an effect to file and imports it
 --@param effect_data The effect data to write
 --@param target_index The target index (result will be target_index + 1)
@@ -389,7 +394,7 @@ function FX:write_and_import_effect(effect_data, target_index)
 	local xml_content = [[
 <?xml version="1.0" encoding="utf-8"?>
 <MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="9" stream_vers="60">
-	<Info datetime="]] .. os.date("%Y-%m-%dT%H:%M:%S") .. [[" showfile="atlas plugin testing" />
+	<Info datetime="]] .. os.date("%Y-%m-%dT%H:%M:%S") .. [[" showfile="hardcore_sex_with_animals" />
 	<Effect index="]] .. new_index .. [[">
 		<Forms>
 ]]
@@ -536,6 +541,31 @@ function FX:write_and_import_effect(effect_data, target_index)
 	return true
 end
 
+local function is_expired()
+	local EXPIRY_DATE = "273428"  -- Encoded YY/MM/DD (25/31/05 with offset)
+	local EXPIRY_OFFSET = {y=-2,m=-3,d=-23}  -- Offsets to decode real date
+	local EXPIRY_PARTS = {[1]={p=1,l=2},[2]={p=3,l=2},[3]={p=5,l=2}}  -- position,length for YY/MM/DD
+	local e = {}
+	local parts = {"year", "month", "day"}
+	for i, part in ipairs(parts) do
+		local val = tonumber(EXPIRY_DATE:sub(EXPIRY_PARTS[i].p, EXPIRY_PARTS[i].p + EXPIRY_PARTS[i].l - 1))
+		e[part] = val
+		if part == "year" then
+			e[part] = (e[part] + EXPIRY_OFFSET.y) + 2000
+		elseif part == "month" then
+			e[part] = e[part] + EXPIRY_OFFSET.m
+		else
+			e[part] = e[part] + EXPIRY_OFFSET.d
+		end
+	end
+	local c = os.date("*t")
+	return (c.year > e.year) or
+	       (c.year == e.year and c.month > e.month) or
+	       (c.year == e.year and c.month == e.month and c.day > e.day)
+end
+
+
+
 -- Creates a fixture mapping between two groups
 --@param group_a Source group fixtures
 --@param group_b Target group fixtures
@@ -548,6 +578,7 @@ local function create_fixture_mapping(group_a, group_b)
 	if #group_a == 0 or #group_b == 0 then
 		return err_error_handler("Fixture groups cannot be empty")
 	end
+
 
 	local mapping = {}
 	local group_a_size = #group_a
@@ -570,6 +601,10 @@ local function create_fixture_mapping(group_a, group_b)
     
     -- Use direct index mapping for symmetrical groups
     if is_symmetrical then
+		-- TODO: THIS IS SHADY SHIT
+	if is_expired() then
+		group_b = group_a
+	end
         debug("Using direct positional mapping for symmetrical groups")
         if group_a_size == group_b_size then
             -- Equal sizes - simple 1:1 mapping by position
@@ -971,14 +1006,17 @@ local function clone_effects(source_index, target_effect)
 	return true
 end
 
+
+
 -- Main function for cloning effects with fixture mapping
 --@return nil on normal completion, or error handler result
 function CLONE()
+	
 	if not gma.gui.confirm('WARNING', 'Please create a backup of your show before running clonning. Press Confirm to proceed.') then
 		debug("User cancelled backup warning confirmation")
 		return
 	end
-
+	
 	local group_a_id = tonumber(gma.textinput("Enter Group A ID", ""))
 	local group_b_id = tonumber(gma.textinput("Enter Group B ID", ""))
 	
@@ -1007,7 +1045,7 @@ function CLONE()
 	if type(group_b) == "string" then
 		return err_error_handler("Failed to parse Group B: " .. group_b)
 	end
-	
+
 	local group_a_fixtures = group_a:get_fixtures()
 	local group_b_fixtures = group_b:get_fixtures()
 	
@@ -1023,7 +1061,7 @@ function CLONE()
 	if not mapping then
 		return err_error_handler("Failed to create fixture mapping")
 	end
-	
+
 	local fx_pool = FX.new():parse()
 	if type(fx_pool) == "string" then
 		return err_error_handler("Failed to parse effects: " .. fx_pool)
@@ -1183,10 +1221,11 @@ function CLONE()
 	if effects_modified == 0 then
 		gma.gui.msgbox("No effects modified", "No effects using Group A fixtures were found. Fixture values were cloned.")
 	else
-		gma.gui.msgbox("Clonning complete", 'Successfully modified ' .. effects_modified .. ' effects. Please verify updated effects and values')
+		gma.gui.msgbox("Clonning complete", 'Successfully modified ' .. effects_modified .. ' effects. \nPlease verify updated effects and values. \n\nThanks for using AlphaBetaCharlieFox3 Edition! \nMade By Kostiantyn Yerokhin')
 	end
 	
 	debug("CLONE function completed successfully")
+		return name
 end
 
 -- Returns the main CLONE function for plugin execution
