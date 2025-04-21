@@ -1,9 +1,11 @@
+Set-Location $PSScriptRoot
+
 $originalFilePath = "errshowcloner.lua"
 
 $versionLine = Get-Content -Path $originalFilePath | Select-String -Pattern '^local VERSION'
 $version = $versionLine -replace '.*"(.*)".*', '$1'
 
-$username = "username"
+$username = Read-Host "Enter your username"
 
 if (-not $version) {
     Write-Error "Version not found in errshowcloner.lua"
@@ -29,7 +31,7 @@ $outputFilePath = Join-Path -Path $outputDir -ChildPath $outputFileName
 
 Write-Host "Running Lua script to generate output..."
 
-& lua ".\Prometheus\src\cli.lua" --preset Minify $originalFilePath --o $outputFilePath
+& lua ".\obfuscation_stuff\src\cli.lua" --preset Minify $originalFilePath --o $outputFilePath
 
 if (Test-Path -Path $outputFilePath) {
     Write-Host "Output file created: $outputFilePath"
