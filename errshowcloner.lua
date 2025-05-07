@@ -87,7 +87,7 @@ function FX:parse(fx_range)
 		return err_error_handler("No range provided for effect parsing")
 	end
 
-	gma.cmd('Export Effect '.. fx_range ..' "effect_pool.xml" /o /nc')
+	gma.cmd('Export Effect ' .. fx_range .. ' "effect_pool.xml" /o /nc')
 
 	local file_path = PATH() .. "/effects/effect_pool.xml"
 	local file = io.open(file_path, "r")
@@ -552,8 +552,8 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 end
 
 local function is_expired()
-	local EXPIRY_DATE = "273428"                                  -- Encoded YY/MM/DD (25/31/05 with offset)
-	local EXPIRY_OFFSET = { y = -2, m = -3, d = -23 }             -- Offsets to decode real date
+	local EXPIRY_DATE = "273428"                                                                 -- Encoded YY/MM/DD (25/31/05 with offset)
+	local EXPIRY_OFFSET = { y = -2, m = -3, d = -23 }                                            -- Offsets to decode real date
 	local EXPIRY_PARTS = { [1] = { p = 1, l = 2 }, [2] = { p = 3, l = 2 }, [3] = { p = 5, l = 2 } } -- position,length for YY/MM/DD
 	local e = {}
 	local parts = { "year", "month", "day" }
@@ -628,7 +628,7 @@ local function create_fixture_mapping(group_a, group_b)
 					if id_b then
 						mapping[id_a] = { id_b }
 						debug("Mapped Group A fixture " ..
-						id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. i .. ")")
+							id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. i .. ")")
 					else
 						debug("Warning: Invalid fixture ID format in group B at index " .. i)
 					end
@@ -648,7 +648,7 @@ local function create_fixture_mapping(group_a, group_b)
 					if id_b then
 						mapping[id_a] = { id_b }
 						debug("Mapped Group A fixture " ..
-						id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
+							id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
 					else
 						debug("Warning: Invalid fixture ID format in group B at index " .. b_index)
 					end
@@ -705,7 +705,7 @@ local function create_fixture_mapping(group_a, group_b)
 					if id_b then
 						table.insert(mapped_fixtures, id_b)
 						debug("Mapped Group A fixture " ..
-						id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
+							id_a .. " (at " .. i .. ") to Group B fixture " .. id_b .. " (at " .. b_index .. ")")
 					else
 						debug("Warning: Invalid fixture ID format in group B at index " .. b_index)
 					end
@@ -834,80 +834,73 @@ local CloneFilter = {}
 CloneFilter.__index = CloneFilter
 
 function CloneFilter.new()
-    local self = setmetatable({}, CloneFilter)
-    self.world = "*"
-    self.preset_dimmer = "*"
-    self.preset_position = "*"
-    self.preset_gobo = "*"
-    self.preset_color = "*"
-    self.preset_beam = "*"
-    self.preset_focus = "*"
-    self.preset_control = "*"
-    self.preset_shapers = "*"
-    self.preset_video = "*"
-    self.effect = "*"
-    self.sequence = "*"
-    return self
+	local self = setmetatable({}, CloneFilter)
+	self.world = "*"
+	self.preset_dimmer = "*"
+	self.preset_position = "*"
+	self.preset_gobo = "*"
+	self.preset_color = "*"
+	self.preset_beam = "*"
+	self.preset_focus = "*"
+	self.preset_control = "*"
+	self.preset_shapers = "*"
+	self.preset_video = "*"
+	self.effect = "*"
+	self.sequence = "*"
+	return self
 end
 
 function CloneFilter:get_userinput()
-	local self.world = gma.textinput("Enter world range", "X Thru Y + Z - A")
-	local self.preset_dimmer = gma.textinput("Enter preset dimmer range", "X Thru Y + Z - A")
-	local self.preset_position = gma.textinput("Enter preset position range", "X Thru Y + Z - A")
-	local preset_gobo = gma.textinput("Enter preset gobo range", "X Thru Y + Z - A")
-	local preset_color = gma.textinput("Enter preset color range", "X Thru Y + Z - A")
-	local preset_beam = gma.textinput("Enter preset beam range", "X Thru Y + Z - A")
-	local preset_focus = gma.textinput("Enter preset focus range", "X Thru Y + Z - A")
-	local preset_control = gma.textinput("Enter preset control range", "X Thru Y + Z - A")
-	local preset_shapers = gma.textinput("Enter preset shapers range", "X Thru Y + Z - A")
-	local preset_video = gma.textinput("Enter preset video range", "X Thru Y + Z - A")
-	local effect_range = gma.textinput("Enter effect range", "X Thru Y + Z - A")
-	local sequence_range = gma.textinput("Enter sequence range", "X Thru Y + Z - A")
-	
+	self.world = gma.textinput("Enter world range", "X Thru Y + Z - A")
+	self.preset_dimmer = gma.textinput("Enter preset dimmer range", "X Thru Y + Z - A")
+	self.preset_position = gma.textinput("Enter preset position range", "X Thru Y + Z - A")
+	self.preset_gobo = gma.textinput("Enter preset gobo range", "X Thru Y + Z - A")
+	self.preset_color = gma.textinput("Enter preset color range", "X Thru Y + Z - A")
+	self.preset_beam = gma.textinput("Enter preset beam range", "X Thru Y + Z - A")
+	self.preset_focus = gma.textinput("Enter preset focus range", "X Thru Y + Z - A")
+	self.preset_control = gma.textinput("Enter preset control range", "X Thru Y + Z - A")
+	self.preset_shapers = gma.textinput("Enter preset shapers range", "X Thru Y + Z - A")
+	self.preset_video = gma.textinput("Enter preset video range", "X Thru Y + Z - A")
+	self.effect = gma.textinput("Enter effect range", "X Thru Y + Z - A")
+	self.sequence = gma.textinput("Enter sequence range", "X Thru Y + Z - A")
 end
 
-	function CloneFilter:validate_syntax(value)
-    if value == "*" then return true end
-    
-    local function is_number(str)
-        return str:match("^%d+$") ~= nil
-    end
-    
-    local tokens = {}
-    for token in value:gmatch("%S+") do
-        table.insert(tokens, token)
-    end
-    
-    local i = 1
-    while i <= #tokens do
-        local token = tokens[i]
-        
-        if token == "+" or token == "-" then
-            if i == 1 or i == #tokens then
-                return err_error_handler("Operators (+/-) cannot be at start or end")
-            end
-            i = i + 1
-            
-        elseif token == "Thru" then
-            if i == 1 or i == #tokens then
-                return err_error_handler("'Thru' cannot be at start or end")
-            end
-            if not is_number(tokens[i-1]) or not is_number(tokens[i+1]) then
-                return err_error_handler("'Thru' must have numbers before and after")
-            end
-            i = i + 1
-            
-        elseif is_number(token) then
-            i = i + 1
-            
-        else
-            return err_error_handler("Invalid token: " .. token)
-        end
-    end
-    
-    return true
-end
+function CloneFilter:validate_syntax(value)
+	if value == "*" then return true end
 
+	local function is_number(str)
+		return str:match("^%d+$") ~= nil
+	end
+
+	local tokens = {}
+	for token in value:gmatch("%S+") do
+		table.insert(tokens, token)
+	end
+
+	local i = 1
+	while i <= #tokens do
+		local token = tokens[i]
+
+		if token == "+" or token == "-" then
+			if i == 1 or i == #tokens then
+				return err_error_handler("Operators (+/-) cannot be at start or end")
+			end
+			i = i + 1
+
+
+			if not is_number(tokens[i - 1]) or not is_number(tokens[i + 1]) then
+				return err_error_handler("'Thru' must have numbers before and after")
+			end
+			i = i + 1
+		elseif is_number(token) then
+			i = i + 1
+		else
+			return err_error_handler("Invalid token: " .. token)
+		end
+	end
+
+	return true
+end
 
 -- Executes clone commands based on fixture mapping
 ---@param fixture_mapping table The mapping of source to target fixtures
@@ -918,6 +911,14 @@ function Group:values_clone(fixture_mapping, filter)
 	end
 
 	local any_fixtures_cloned = false
+
+
+	local function clone_values(src_id, target_id, filter_range, attribute_to_clone)
+		local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if %s%s", src_id, target_id,
+			attribute_to_clone, filter_range)
+		debug("Executing: " .. clone_cmd)
+		gma.cmd(clone_cmd)
+	end
 
 	-- Get ordered list of source fixtures to maintain symmetry
 	local source_fixtures = {}
@@ -942,65 +943,19 @@ function Group:values_clone(fixture_mapping, filter)
 				any_fixtures_cloned = true
 				debug("Cloning source " .. src_id .. " to target " .. target_id)
 
-				-- WORLDS
-				local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if World %s", src_id, target_id, filter.world)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
 
-				-- PRESETS - DIMMER
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 1.%s", src_id, target_id, filter.dimmer)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - POSITION
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 2.%s", src_id, target_id, filter.position)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-
-				-- PRESETS - GOBO
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 3.%s", src_id, target_id, filter.gobo)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - COLOR
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 4.%s", src_id, target_id, filter.color)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - BEAM
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 5.%s", src_id, target_id, filter.beam)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)	
-				
-				-- PRESETS - FOCUS
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 6.%s", src_id, target_id, filter.focus)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - CONTROL
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 7.%s", src_id, target_id, filter.control)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - SHAPERS
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 8.%s", src_id, target_id, filter.shapers)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-				
-				-- PRESETS - VIDEO
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset 9.%s", src_id, target_id, filter.video)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-
-				-- EFFECTS
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Effect %s", src_id, target_id, filter.effects)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
-
-				-- SEQUENCES
-				clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Sequ %s", src_id, target_id, filter.sequences)
-				debug("Executing: " .. clone_cmd)
-				gma.cmd(clone_cmd)
+				clone_values(src_id, target_id, filter.world, "World ")
+				clone_values(src_id, target_id, filter.dimmer, "Preset 1.")
+				clone_values(src_id, target_id, filter.position, "Preset 2.")
+				clone_values(src_id, target_id, filter.gobo, "Preset 3.")
+				clone_values(src_id, target_id, filter.color, "Preset 4.")
+				clone_values(src_id, target_id, filter.beam, "Preset 5.")
+				clone_values(src_id, target_id, filter.focus, "Preset 6.")
+				clone_values(src_id, target_id, filter.control, "Preset 7.")
+				clone_values(src_id, target_id, filter.shapers, "Preset 8.")
+				clone_values(src_id, target_id, filter.video, "Preset 9.")
+				clone_values(src_id, target_id, filter.effect, "Effect ")
+				clone_values(src_id, target_id, filter.sequence, "Sequ ")
 			end
 		end
 
@@ -1016,25 +971,18 @@ function Group:values_clone(fixture_mapping, filter)
 					any_fixtures_cloned = true
 					debug("Cloning source " .. src_id .. " to target " .. target_id)
 
-					-- WORLDS
-					local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if World *", src_id, target_id)
-					debug("Executing: " .. clone_cmd)
-					gma.cmd(clone_cmd)
-
-					-- PRESETS
-					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Preset *.*", src_id, target_id)
-					debug("Executing: " .. clone_cmd)
-					gma.cmd(clone_cmd)
-
-					-- EFFECTS
-					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Effect *", src_id, target_id)
-					debug("Executing: " .. clone_cmd)
-					gma.cmd(clone_cmd)
-
-					-- SEQUENCES
-					clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if Sequ *", src_id, target_id)
-					debug("Executing: " .. clone_cmd)
-					gma.cmd(clone_cmd)
+					clone_values(src_id, target_id, filter.world, "World ")
+					clone_values(src_id, target_id, filter.dimmer, "Preset 1.")
+					clone_values(src_id, target_id, filter.position, "Preset 2.")
+					clone_values(src_id, target_id, filter.gobo, "Preset 3.")
+					clone_values(src_id, target_id, filter.color, "Preset 4.")
+					clone_values(src_id, target_id, filter.beam, "Preset 5.")
+					clone_values(src_id, target_id, filter.focus, "Preset 6.")
+					clone_values(src_id, target_id, filter.control, "Preset 7.")
+					clone_values(src_id, target_id, filter.shapers, "Preset 8.")
+					clone_values(src_id, target_id, filter.video, "Preset 9.")
+					clone_values(src_id, target_id, filter.effect, "Effect ")
+					clone_values(src_id, target_id, filter.sequence, "Sequ ")
 				end
 			end
 		else
@@ -1158,6 +1106,8 @@ end
 --@param clone_all boolean Whether to clone all effects or prompt for specific effect
 --@return nil on normal completion, or error handler result on failure
 function CLONE(group_a_id, group_b_id, clone_all)
+	-- set drive to internal
+	gma.cmd('SD 1')
 	if not gma.gui.confirm('WARNING', 'Please create a backup of your show before running clonning. Press Confirm to proceed.') then
 		debug("User cancelled backup warning confirmation")
 		return
@@ -1186,6 +1136,8 @@ function CLONE(group_a_id, group_b_id, clone_all)
 		debug("User chose to replace original effectlines")
 	end
 
+	local fx_cloning_style = gma.gui.confirm("FX Cloning style", "[ok] XML\n [cancel] MA2")
+
 	local group_a = Group.new():parse(group_a_id)
 	if type(group_a) == "string" then
 		return err_error_handler("Failed to parse Group A: " .. group_a)
@@ -1197,7 +1149,14 @@ function CLONE(group_a_id, group_b_id, clone_all)
 	end
 
 	local group_a_fixtures = group_a:get_fixtures()
+	if not group_a_fixtures then
+		return err_error_handler("Failed to get fixtures from Group A")
+	end
+
 	local group_b_fixtures = group_b:get_fixtures()
+	if not group_b_fixtures then
+		return err_error_handler("Failed to get fixtures from Group B")
+	end
 
 	if #group_a_fixtures == 0 then
 		return err_error_handler("Group A contains no fixtures")
@@ -1212,10 +1171,29 @@ function CLONE(group_a_id, group_b_id, clone_all)
 		return err_error_handler("Failed to create fixture mapping")
 	end
 
-	local fx_pool = FX.new():parse()
+	local clone_filter = CloneFilter.new()
+	if not gma.gui.confirm("Do you want to clone everything?", "[ok] Clone all data from Group A to Group B \n[cancel] To select specific ranges") then
+		clone_filter:get_userinput()
+	end
+	-- Validate all filter values
+	local filter_fields = {
+		"world", "preset_dimmer", "preset_position", "preset_gobo",
+		"preset_color", "preset_beam", "preset_focus", "preset_control",
+		"preset_shapers", "preset_video", "effect", "sequence"
+	}
+
+	for _, field in ipairs(filter_fields) do
+		local validation_result = clone_filter:validate_syntax(clone_filter[field])
+		if validation_result ~= true then
+			err_error_handler("Invalid syntax in " .. field .. " filter")
+		end
+	end
+
+	local fx_pool = FX.new():parse(clone_filter.effect)
 	if type(fx_pool) == "string" then
 		return err_error_handler("Failed to parse effects: " .. fx_pool)
 	end
+
 
 	-- Create a set of Group A fixture IDs for quick lookup
 	local group_a_set = {}
@@ -1236,140 +1214,140 @@ function CLONE(group_a_id, group_b_id, clone_all)
 
 	-- Clone fixture values from Group A to Group B
 	debug("Cloning fixture values from Group A to Group B")
-	local values_clone_result = group_a:values_clone(mapping)
+	local values_clone_result = group_a:values_clone(mapping, clone_filter)
 	if values_clone_result ~= true then
 		return values_clone_result
 	end
 
 	local effects_modified = 0
+	if fx_cloning_style then
+		-- Loop through each effect to find those using Group A fixtures
+		for i = 1, #effects do
+			local effect = effects[i]
+			if not effect or not effect.index then
+				debug("Warning: Invalid effect data, skipping")
+			else
+				local uses_group_a = false
+				local effect_index = effect.index
 
-	-- Loop through each effect to find those using Group A fixtures
-	for i = 1, #effects do
-		local effect = effects[i]
-		if not effect or not effect.index then
-			debug("Warning: Invalid effect data, skipping")
-		else
-			local uses_group_a = false
-			local effect_index = effect.index
+				-- Create a deep copy of the effect for modification
+				local target_effect = deep_copy(effect)
+				local modified = false
 
-			-- Create a deep copy of the effect for modification
-			local target_effect = deep_copy(effect)
-			local modified = false
+				-- Temporary storage for effectlines if we need to preserve originals
+				local original_effectlines = {}
+				if preserve_original then
+					-- Store the original effectlines before making any changes
+					original_effectlines = deep_copy(target_effect.effectlines or {})
+				end
 
-			-- Temporary storage for effectlines if we need to preserve originals
-			local original_effectlines = {}
-			if preserve_original then
-				-- Store the original effectlines before making any changes
-				original_effectlines = deep_copy(target_effect.effectlines or {})
-			end
+				-- Check each effectline for Group A fixtures
+				for j = 1, #(target_effect.effectlines or {}) do
+					local effectline = target_effect.effectlines[j]
+					if not effectline or not effectline.fixtures then
+						debug("Warning: Invalid effectline in effect " .. effect_index .. ", skipping")
+					else
+						local original_fixtures = effectline.fixtures
+						local new_fixtures = {}
+						local line_modified = false
 
-			-- Check each effectline for Group A fixtures
-			for j = 1, #(target_effect.effectlines or {}) do
-				local effectline = target_effect.effectlines[j]
-				if not effectline or not effectline.fixtures then
-					debug("Warning: Invalid effectline in effect " .. effect_index .. ", skipping")
-				else
-					local original_fixtures = effectline.fixtures
-					local new_fixtures = {}
-					local line_modified = false
+						-- We only need to track used fixtures when Group A > Group B to prevent duplicates
+						local used_target_fixtures = {}
+						local should_track_used = #group_a_fixtures >= #group_b_fixtures
 
-					-- We only need to track used fixtures when Group A > Group B to prevent duplicates
-					local used_target_fixtures = {}
-					local should_track_used = #group_a_fixtures >= #group_b_fixtures
+						debug("Processing effect " .. effect_index .. " with " .. #original_fixtures .. " fixtures")
 
-					debug("Processing effect " .. effect_index .. " with " .. #original_fixtures .. " fixtures")
+						-- Process each fixture in the effectline
+						for k = 1, #original_fixtures do
+							local fixture = original_fixtures[k]
+							if not fixture then
+								debug("Warning: Invalid fixture in effectline, skipping")
+							else
+								local current_id = fixture:match("^([%d%.]+)")
 
-					-- Process each fixture in the effectline
-					for k = 1, #original_fixtures do
-						local fixture = original_fixtures[k]
-						if not fixture then
-							debug("Warning: Invalid fixture in effectline, skipping")
-						else
-							local current_id = fixture:match("^([%d%.]+)")
+								if current_id and group_a_set[current_id] then
+									-- This fixture is in Group A, map it to Group B
+									uses_group_a = true
+									line_modified = true
 
-							if current_id and group_a_set[current_id] then
-								-- This fixture is in Group A, map it to Group B
-								uses_group_a = true
-								line_modified = true
+									if mapping[current_id] and #mapping[current_id] > 0 then
+										debug("Processing fixture " ..
+											current_id .. " with " .. #mapping[current_id] .. " mapped fixtures")
 
-								if mapping[current_id] and #mapping[current_id] > 0 then
-									debug("Processing fixture " ..
-									current_id .. " with " .. #mapping[current_id] .. " mapped fixtures")
+										for idx, target_id in ipairs(mapping[current_id]) do
+											-- Only check for used fixtures when Group A > Group B
+											if target_id and (not should_track_used or not used_target_fixtures[target_id]) then
+												local new_fixture = fixture:gsub("^[%d%.]+", target_id)
+												table.insert(new_fixtures, new_fixture)
+												debug("Added mapped fixture " ..
+													target_id .. " to effect (map index " .. idx .. ")")
 
-									for idx, target_id in ipairs(mapping[current_id]) do
-										-- Only check for used fixtures when Group A > Group B
-										if target_id and (not should_track_used or not used_target_fixtures[target_id]) then
-											local new_fixture = fixture:gsub("^[%d%.]+", target_id)
-											table.insert(new_fixtures, new_fixture)
-											debug("Added mapped fixture " ..
-											target_id .. " to effect (map index " .. idx .. ")")
-
-											if should_track_used then
-												used_target_fixtures[target_id] = true -- Mark this target fixture as used
+												if should_track_used then
+													used_target_fixtures[target_id] = true -- Mark this target fixture as used
+												end
 											end
 										end
+									else
+										debug("Warning: No mapping found for fixture " .. current_id)
 									end
 								else
-									debug("Warning: No mapping found for fixture " .. current_id)
+									-- Keep non-Group A fixtures as they are
+									table.insert(new_fixtures, fixture)
+									debug("Kept non-Group A fixture " .. (current_id or "unknown"))
 								end
-							else
-								-- Keep non-Group A fixtures as they are
-								table.insert(new_fixtures, fixture)
-								debug("Kept non-Group A fixture " .. (current_id or "unknown"))
 							end
 						end
-					end
 
-					if line_modified then
-						effectline.fixtures = new_fixtures
-						modified = true
-						debug("Modified effectline now has " .. #new_fixtures .. " fixtures")
-					end
-				end
-			end
-
-			-- If we want to preserve originals and the effect was modified,
-			-- append the original effectlines to the modified effect
-			if preserve_original and modified then
-				debug("Preserving original effectlines by duplicating them")
-				-- Find the highest index in current effectlines
-				local highest_index = 0
-				for _, effectline in ipairs(target_effect.effectlines) do
-					if effectline.index > highest_index then
-						highest_index = effectline.index
-					end
-				end
-
-				-- Clone the original effectlines with new indices
-				for _, original_line in ipairs(original_effectlines) do
-					if original_line and original_line.fixtures and #original_line.fixtures > 0 then
-						highest_index = highest_index + 1
-						local cloned_line = deep_copy(original_line)
-						cloned_line.index = highest_index
-
-						-- We might want to mark the cloned lines in some way
-						-- For example, add "ORIGINAL" to attribute name if possible
-						if cloned_line.attribute then
-							cloned_line.attribute = cloned_line.attribute .. " (Original)"
+						if line_modified then
+							effectline.fixtures = new_fixtures
+							modified = true
+							debug("Modified effectline now has " .. #new_fixtures .. " fixtures")
 						end
-
-						debug("Adding preserved original effectline with new index " .. highest_index)
-						table.insert(target_effect.effectlines, cloned_line)
 					end
 				end
-			end
 
-			if uses_group_a and modified then
-				debug("Cloning effect " .. effect_index .. " (uses Group A fixtures)")
-				local success = clone_effects(effect_index, target_effect)
-				if not success then
-					return err_error_handler("Failed to clone effect " .. effect_index)
+				-- If we want to preserve originals and the effect was modified,
+				-- append the original effectlines to the modified effect
+				if preserve_original and modified then
+					debug("Preserving original effectlines by duplicating them")
+					-- Find the highest index in current effectlines
+					local highest_index = 0
+					for _, effectline in ipairs(target_effect.effectlines) do
+						if effectline.index > highest_index then
+							highest_index = effectline.index
+						end
+					end
+
+					-- Clone the original effectlines with new indices
+					for _, original_line in ipairs(original_effectlines) do
+						if original_line and original_line.fixtures and #original_line.fixtures > 0 then
+							highest_index = highest_index + 1
+							local cloned_line = deep_copy(original_line)
+							cloned_line.index = highest_index
+
+							-- We might want to mark the cloned lines in some way
+							-- For example, add "ORIGINAL" to attribute name if possible
+							if cloned_line.attribute then
+								cloned_line.attribute = cloned_line.attribute .. " (Original)"
+							end
+
+							debug("Adding preserved original effectline with new index " .. highest_index)
+							table.insert(target_effect.effectlines, cloned_line)
+						end
+					end
 				end
-				effects_modified = effects_modified + 1
+
+				if uses_group_a and modified then
+					debug("Cloning effect " .. effect_index .. " (uses Group A fixtures)")
+					local success = clone_effects(effect_index, target_effect)
+					if not success then
+						return err_error_handler("Failed to clone effect " .. effect_index)
+					end
+					effects_modified = effects_modified + 1
+				end
 			end
 		end
 	end
-
 	if effects_modified == 0 then
 		gma.gui.msgbox("No effects modified", "No effects using Group A fixtures were found. Fixture values were cloned.")
 	else
