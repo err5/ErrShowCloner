@@ -5,7 +5,7 @@ $originalFilePath = "errshowcloner.lua"
 $versionLine = Get-Content -Path $originalFilePath | Select-String -Pattern '^local VERSION'
 $version = $versionLine -replace '.*"(.*)".*', '$1'
 
-$username = Read-Host "Enter your username"
+$username = Read-Host "Enter username"
 
 if (-not $version) {
     Write-Error "Version not found in errshowcloner.lua"
