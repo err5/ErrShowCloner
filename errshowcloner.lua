@@ -402,7 +402,7 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 	debug("Writing effect to index " .. new_index)
 
 	-- First delete the target effect if it exists
-	gma.cmd(string.format('Delete Effect %d /nc', new_index))
+	-- gma.cmd(string.format('Delete Effect %d /nc', new_index))
 
 	local xml_content = [[
 <?xml version="1.0" encoding="utf-8"?>
