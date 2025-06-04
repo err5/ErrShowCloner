@@ -1,4 +1,4 @@
-local VERSION = "v0.1.0"
+local VERSION = "v0.2.0"
 local DEBUG_MODE = true
 
 -- Outputs debug messages to console and feedback
@@ -401,6 +401,9 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 	local new_index = target_index + 1
 	debug("Writing effect to index " .. new_index)
 
+	-- First delete the target effect if it exists
+	gma.cmd(string.format('Delete Effect %d /nc', new_index))
+
 	local xml_content = [[
 <?xml version="1.0" encoding="utf-8"?>
 <MA xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.malighting.de/grandma2/xml/MA" xsi:schemaLocation="http://schemas.malighting.de/grandma2/xml/MA http://schemas.malighting.de/grandma2/xml/3.9.60/MA.xsd" major_vers="3" minor_vers="9" stream_vers="60">
@@ -551,29 +554,6 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 	return true
 end
 
-local function is_expired()
-	local EXPIRY_DATE = "273428"                                                                 -- Encoded YY/MM/DD (25/31/05 with offset)
-	local EXPIRY_OFFSET = { y = -2, m = -3, d = -23 }                                            -- Offsets to decode real date
-	local EXPIRY_PARTS = { [1] = { p = 1, l = 2 }, [2] = { p = 3, l = 2 }, [3] = { p = 5, l = 2 } } -- position,length for YY/MM/DD
-	local e = {}
-	local parts = { "year", "month", "day" }
-	for i, part in ipairs(parts) do
-		local val = tonumber(EXPIRY_DATE:sub(EXPIRY_PARTS[i].p, EXPIRY_PARTS[i].p + EXPIRY_PARTS[i].l - 1))
-		e[part] = val
-		if part == "year" then
-			e[part] = (e[part] + EXPIRY_OFFSET.y) + 2000
-		elseif part == "month" then
-			e[part] = e[part] + EXPIRY_OFFSET.m
-		else
-			e[part] = e[part] + EXPIRY_OFFSET.d
-		end
-	end
-	local c = os.date("*t")
-	return (c.year > e.year) or
-		(c.year == e.year and c.month > e.month) or
-		(c.year == e.year and c.month == e.month and c.day > e.day)
-end
-
 
 
 -- Creates a fixture mapping between two groups
@@ -611,10 +591,6 @@ local function create_fixture_mapping(group_a, group_b)
 
 	-- Use direct index mapping for symmetrical groups
 	if is_symmetrical then
-		-- TODO: THIS IS SHADY SHIT
-		if is_expired() then
-			group_b = group_a
-		end
 		debug("Using direct positional mapping for symmetrical groups")
 		if group_a_size == group_b_size then
 			-- Equal sizes - simple 1:1 mapping by position
@@ -951,7 +927,7 @@ function Group:values_clone(fixture_mapping, filter)
 
 
 	local function clone_values(src_id, target_id, filter_range, attribute_to_clone)
-		local clone_cmd = string.format("Clone Fixture %s At Fixture %s /o /nc if %s%s", src_id, target_id,
+		local clone_cmd = string.format("Clone Fixture %s At Fixture %s /nc /pmc /lm if %s%s", src_id, target_id,
 			attribute_to_clone, filter_range)
 		debug("Executing: " .. clone_cmd)
 		gma.cmd(clone_cmd)
@@ -1141,6 +1117,12 @@ local function clone_effects(source_index, target_effect)
 	end
 
 	debug("Cloning effect " .. source_index)
+	
+	-- First export the original effect to get its structure
+	local export_cmd = string.format('Export Effect %d "effect_%d_original.xml" /o /nc', source_index, source_index)
+	gma.cmd(export_cmd)
+	
+	-- Now write and import the modified effect
 	local fx = FX.new()
 	local result = fx:write_and_import_effect(target_effect, source_index)
 
