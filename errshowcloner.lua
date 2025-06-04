@@ -794,15 +794,16 @@ end
 
 ---@class CloneFilter
 ---@field world string Range of world values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_dimmer string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_position string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_gobo string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_color string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_beam string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_focus string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_control string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_shapers string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
----@field preset_video string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field all string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field dimmer string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field position string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field gobo string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field color string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field beam string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field focus string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field control string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field shapers string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field video string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
 ---@field effect string Range of effect values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
 ---@field sequence string Range of sequence values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
 
@@ -812,15 +813,16 @@ CloneFilter.__index = CloneFilter
 function CloneFilter.new()
 	local self = setmetatable({}, CloneFilter)
 	self.world = "*"
-	self.preset_dimmer = "*"
-	self.preset_position = "*"
-	self.preset_gobo = "*"
-	self.preset_color = "*"
-	self.preset_beam = "*"
-	self.preset_focus = "*"
-	self.preset_control = "*"
-	self.preset_shapers = "*"
-	self.preset_video = "*"
+	self.all = "*"
+	self.dimmer = "*"
+	self.position = "*"
+	self.gobo = "*"
+	self.color = "*"
+	self.beam = "*"
+	self.focus = "*"
+	self.control = "*"
+	self.shapers = "*"
+	self.video = "*"
 	self.effect = "*"
 	self.sequence = "*"
 	return self
@@ -828,15 +830,16 @@ end
 
 function CloneFilter:get_userinput()
 	self.world = gma.textinput("Enter world range", "X Thru Y + Z - A")
-	self.preset_dimmer = gma.textinput("Enter preset dimmer range", "X Thru Y + Z - A")
-	self.preset_position = gma.textinput("Enter preset position range", "X Thru Y + Z - A")
-	self.preset_gobo = gma.textinput("Enter preset gobo range", "X Thru Y + Z - A")
-	self.preset_color = gma.textinput("Enter preset color range", "X Thru Y + Z - A")
-	self.preset_beam = gma.textinput("Enter preset beam range", "X Thru Y + Z - A")
-	self.preset_focus = gma.textinput("Enter preset focus range", "X Thru Y + Z - A")
-	self.preset_control = gma.textinput("Enter preset control range", "X Thru Y + Z - A")
-	self.preset_shapers = gma.textinput("Enter preset shapers range", "X Thru Y + Z - A")
-	self.preset_video = gma.textinput("Enter preset video range", "X Thru Y + Z - A")
+	self.all = gma.textinput("Enter preset all range", "X Thru Y + Z - A")
+	self.dimmer = gma.textinput("Enter preset dimmer range", "X Thru Y + Z - A")
+	self.position = gma.textinput("Enter preset position range", "X Thru Y + Z - A")
+	self.gobo = gma.textinput("Enter preset gobo range", "X Thru Y + Z - A")
+	self.color = gma.textinput("Enter preset color range", "X Thru Y + Z - A")
+	self.beam = gma.textinput("Enter preset beam range", "X Thru Y + Z - A")
+	self.focus = gma.textinput("Enter preset focus range", "X Thru Y + Z - A")
+	self.control = gma.textinput("Enter preset control range", "X Thru Y + Z - A")
+	self.shapers = gma.textinput("Enter preset shapers range", "X Thru Y + Z - A")
+	self.video = gma.textinput("Enter preset video range", "X Thru Y + Z - A")
 	self.effect = gma.textinput("Enter effect range", "X Thru Y + Z - A")
 	self.sequence = gma.textinput("Enter sequence range", "X Thru Y + Z - A")
 end
@@ -958,6 +961,7 @@ function Group:values_clone(fixture_mapping, filter)
 
 
 				clone_values(src_id, target_id, filter.world, "World ")
+				clone_values(src_id, target_id, filter.all, "Preset 0.")
 				clone_values(src_id, target_id, filter.dimmer, "Preset 1.")
 				clone_values(src_id, target_id, filter.position, "Preset 2.")
 				clone_values(src_id, target_id, filter.gobo, "Preset 3.")
@@ -985,6 +989,7 @@ function Group:values_clone(fixture_mapping, filter)
 					debug("Cloning source " .. src_id .. " to target " .. target_id)
 
 					clone_values(src_id, target_id, filter.world, "World ")
+					clone_values(src_id, target_id, filter.all, "Preset 0.")
 					clone_values(src_id, target_id, filter.dimmer, "Preset 1.")
 					clone_values(src_id, target_id, filter.position, "Preset 2.")
 					clone_values(src_id, target_id, filter.gobo, "Preset 3.")
@@ -1302,17 +1307,24 @@ function CLONE(group_a_id, group_b_id, clone_all)
 	else
 		debug("User chose to replace original effectlines")
 	end
+	local fx_cloning_style = 0
 
 	local cloning_style = gma.gui.confirm("Cloning style", "[OK] for XML, [CANCEL] for MA2")
-	local fx_cloning_style = 1
-	
 	if cloning_style then
-		local full_clone = gma.gui.confirm("XML Cloning style", "[OK] for Full, [CANCEL] for Effects Only") 
-		if full_clone then
-			fx_cloning_style = 2
-		else
+		fx_cloning_style = 1
+	else
+		fx_cloning_style = 2
+	end
+	
+	if fx_cloning_style == 1 then
+		local full_clone = gma.gui.confirm("XML Cloning style", "[OK] for Full, [CANCEL] for Effects Only")
+		if not full_clone then
 			fx_cloning_style = 3
 		end
+	end
+
+	if fx_cloning_style == 0 then
+		return err_error_handler("Invalid cloning style. Got 0")
 	end
 
 	local group_a = Group.new():parse(group_a_id)
@@ -1356,9 +1368,9 @@ function CLONE(group_a_id, group_b_id, clone_all)
 	end
 	-- Validate all filter values
 	local filter_fields = {
-		"world", "preset_dimmer", "preset_position", "preset_gobo",
-		"preset_color", "preset_beam", "preset_focus", "preset_control",
-		"preset_shapers", "preset_video", "effect", "sequence"
+		"world", "all", "dimmer", "position", "gobo",
+		"color", "beam", "focus", "control",
+		"shapers", "video", "effect", "sequence"
 	}
 
 	for _, field in ipairs(filter_fields) do
@@ -1398,7 +1410,7 @@ function CLONE(group_a_id, group_b_id, clone_all)
 	end
 
 	local effects_modified = 0
-	if fx_cloning_style == 1 or fx_cloning_style == 3 then
+	if fx_cloning_style ~= 2 then
 		effects_modified = process_effects(effects, group_a_set, mapping, group_a_fixtures, group_b_fixtures, preserve_original)
 		if type(effects_modified) == "string" then
 			return effects_modified -- This will be the error handler result
@@ -1414,13 +1426,13 @@ function CLONE(group_a_id, group_b_id, clone_all)
 		message = "XML Effects Only cloning complete"
 	end
 
-	if effects_modified == 0 then
-		gma.gui.msgbox("No effects modified", "No effects using Group A fixtures were found. Fixture values were cloned.")
-	else
+	if effects_modified ~= nil or effects_modified ~= 0 then
 		gma.gui.msgbox(message,
-			'Successfully modified ' ..
-			effects_modified ..
-			' effects. \nPlease verify updated effects and values. \n\nThanks for using AlphaBetaCharlieFox3 Edition! \nMade By Kostiantyn Yerokhin')
+		'Successfully modified ' ..
+		effects_modified ..
+		' effects. \nPlease verify updated effects and values. \n\nThanks for using AlphaBetaCharlieFox3 Edition! \nMade By Kostiantyn Yerokhin')
+	else
+		gma.gui.msgbox("No effects modified", "No effects using Group A fixtures were found. Fixture values were cloned.")
 	end
 
 	debug("CLONE function completed successfully")
