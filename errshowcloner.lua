@@ -1,4 +1,4 @@
-local VERSION = "v0.2.0"
+local VERSION = "v0.2.1"
 local DEBUG_MODE = true
 
 -- Outputs debug messages to console and feedback
