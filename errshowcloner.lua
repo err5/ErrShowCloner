@@ -1,4 +1,4 @@
-local VERSION = "v0.2.1"
+local VERSION = "v0.3.0"
 local DEBUG_MODE = true
 
 -- Outputs debug messages to console and feedback
@@ -171,7 +171,8 @@ function FX:parse(fx_range)
 						attack = tonumber(effectline:match('attack="(%d+)"')),
 						decay = tonumber(effectline:match('decay="(%d+)"')),
 						reverse = effectline:match('reverse="([^"]+)"') == "true",
-						bounce = effectline:match('bounce="([^"]+)"') == "true"
+						bounce = effectline:match('bounce="([^"]+)"') == "true",
+						speed_master = tonumber(effectline:match('speed_master="(%d+)"'))
 					},
 					fixtures = {}
 				}
@@ -284,14 +285,15 @@ function FX:create(params)
 			pwm_decay = effectline.pwm_decay or 0,
 			interleave = effectline.interleave or 0,
 			flags = {
-				absolute_mode = effectline.absolute_mode or true,
+				absolute_mode = effectline.absolute_mode,
 				form_index = effectline.form_index or 7,
 				sub_form_index = effectline.sub_form_index or 0,
 				reverse = effectline.reverse or false,
 				bounce = effectline.bounce or false,
 				pwm_type = effectline.pwm_type or "",
 				attack = effectline.attack or 0,
-				decay = effectline.decay or 0
+				decay = effectline.decay or 0,
+				speed_master = effectline.speed_master
 			},
 			fixtures = effectline.fixtures
 		}
@@ -486,7 +488,7 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 
 				-- Always include absolute_mode flag
 				xml_content = xml_content .. string.format(' absolute_mode="%s"',
-					tostring(effectline.flags.absolute_mode or true):lower())
+					tostring(effectline.flags.absolute_mode):lower())
 
 				-- Add remaining flags
 				xml_content = xml_content .. string.format(' form_index="%d" sub_form_index="%d"',
@@ -503,6 +505,10 @@ function FX:write_and_import_effect(effect_data, target_index, selected_effects)
 
 				if effectline.flags.decay and effectline.flags.decay > 0 then
 					xml_content = xml_content .. string.format(' decay="%d"', effectline.flags.decay)
+				end
+
+				if effectline.flags.speed_master then
+					xml_content = xml_content .. string.format(' speed_master="%d"', effectline.flags.speed_master)
 				end
 			else
 				-- Default flags if none provided
