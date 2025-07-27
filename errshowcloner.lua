@@ -1,4 +1,4 @@
-local VERSION = "v0.3.0"
+local VERSION = "v0.4.0"
 local DEBUG_MODE = true
 
 -- Outputs debug messages to console and feedback
@@ -812,6 +812,7 @@ end
 ---@field video string Range of preset values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
 ---@field effect string Range of effect values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
 ---@field sequence string Range of sequence values to clone in MA2 syntax (e.g. "1 Thru 14 - 10 + 15")
+---@field clone_all boolean if true clones using single call 
 
 local CloneFilter = {}
 CloneFilter.__index = CloneFilter
@@ -831,6 +832,7 @@ function CloneFilter.new()
 	self.video = "*"
 	self.effect = "*"
 	self.sequence = "*"
+	self.clone_all = true
 	return self
 end
 
@@ -848,10 +850,12 @@ function CloneFilter:get_userinput()
 	self.video = gma.textinput("Enter preset video range", "X Thru Y + Z - A")
 	self.effect = gma.textinput("Enter effect range", "X Thru Y + Z - A")
 	self.sequence = gma.textinput("Enter sequence range", "X Thru Y + Z - A")
+	self.clone_all = false
 end
 
 function CloneFilter:get_userinput_fx_only()
 	self.effect = gma.textinput("Enter effect range", "X Thru Y + Z - A")
+	self.clone_all = false
 end
 
 function CloneFilter:validate_syntax(value)
@@ -934,10 +938,15 @@ function Group:values_clone(fixture_mapping, filter)
 
 	local any_fixtures_cloned = false
 
-
 	local function clone_values(src_id, target_id, filter_range, attribute_to_clone)
+		
 		local clone_cmd = string.format("Clone Fixture %s At Fixture %s /nc /pmc /lm if %s%s", src_id, target_id,
-			attribute_to_clone, filter_range)
+		attribute_to_clone, filter_range)
+
+		if filter_range == nil and attribute_to_clone == nil then
+			clone_cmd = string.format("Clone Fixture %s At Fixture %s /nc /lm", src_id, target_id)
+		end
+
 		debug("Executing: " .. clone_cmd)
 		gma.cmd(clone_cmd)
 	end
@@ -965,6 +974,10 @@ function Group:values_clone(fixture_mapping, filter)
 				any_fixtures_cloned = true
 				debug("Cloning source " .. src_id .. " to target " .. target_id)
 
+				if filter.clone_all then
+					clone_values(src_id, target_id)
+
+				else
 
 				clone_values(src_id, target_id, filter.world, "World ")
 				clone_values(src_id, target_id, filter.all, "Preset 0.")
@@ -979,6 +992,7 @@ function Group:values_clone(fixture_mapping, filter)
 				clone_values(src_id, target_id, filter.video, "Preset 9.")
 				clone_values(src_id, target_id, filter.effect, "Effect ")
 				clone_values(src_id, target_id, filter.sequence, "Sequ ")
+				end
 			end
 		end
 
@@ -994,6 +1008,11 @@ function Group:values_clone(fixture_mapping, filter)
 					any_fixtures_cloned = true
 					debug("Cloning source " .. src_id .. " to target " .. target_id)
 
+
+					if filter.clone_all then
+						clone_values(src_id, target_id)
+	
+					else
 					clone_values(src_id, target_id, filter.world, "World ")
 					clone_values(src_id, target_id, filter.all, "Preset 0.")
 					clone_values(src_id, target_id, filter.dimmer, "Preset 1.")
@@ -1007,6 +1026,7 @@ function Group:values_clone(fixture_mapping, filter)
 					clone_values(src_id, target_id, filter.video, "Preset 9.")
 					clone_values(src_id, target_id, filter.effect, "Effect ")
 					clone_values(src_id, target_id, filter.sequence, "Sequ ")
+					end
 				end
 			end
 		else
@@ -1255,7 +1275,7 @@ local function process_effects(effects, group_a_set, mapping, group_a_fixtures, 
 						-- We might want to mark the cloned lines in some way
 						-- For example, add "ORIGINAL" to attribute name if possible
 						if cloned_line.attribute then
-							cloned_line.attribute = cloned_line.attribute .. " (Original)"
+							cloned_line.attribute = cloned_line.attribute
 						end
 
 						debug("Adding preserved original effectline with new index " .. highest_index)
@@ -1365,6 +1385,7 @@ function CLONE(group_a_id, group_b_id, clone_all)
 	if not mapping then
 		return err_error_handler("Failed to create fixture mapping")
 	end
+
 
 	local clone_filter = CloneFilter.new()
 	if fx_cloning_style == 3 then
